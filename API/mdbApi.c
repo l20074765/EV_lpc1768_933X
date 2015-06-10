@@ -423,3 +423,50 @@ uint32 MDB_coin_payout(uint32 payAmount)
 
 	return changedAmount;
 }
+
+
+
+/*********************************************************************************************************
+** Function name:       MDB_valueFromPoint
+** Descriptions:        分转换值
+** input parameters:    无
+** output parameters:   无
+** Returned value:      无
+*********************************************************************************************************/
+uint32 MDB_valueFromCents(uint32 value)
+{
+	uint32 v = 0;
+	switch(stMdb.pointValue){
+		case 0:v = value / 100; break;
+		case 1:v = value / 10; 	break;
+		case 2:v = value;		break;
+		case 3:v = value * 10; break;
+		default:v = value;		break;
+	}
+	return v;
+}
+
+
+
+
+/*********************************************************************************************************
+** Function name:       MDB_valueToPoint
+** Descriptions:        根据小数点转换分
+** input parameters:    无
+** output parameters:   无
+** Returned value:      无
+*********************************************************************************************************/
+uint32 MDB_valueToCents(uint32 value)
+{
+	uint32 v = 0;
+	switch(stMdb.pointValue){
+		case 0:v = value * 100; break;
+		case 1:v = value * 10; 	break;
+		case 2:v = value;		break;
+		case 3:v = value / 10; break;
+		default:v = value;		break;
+	}
+	return v;
+	
+}
+

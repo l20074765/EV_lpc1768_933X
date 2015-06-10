@@ -1,5 +1,14 @@
 #include "..\config.h"
 
+
+#define DEBUG_DEV
+
+#ifdef 	DEBUG_DEV
+#define print_dev(...)	Trace(__VA_ARGS__)
+#else
+#define print_dev(...)
+#endif
+
 static volatile uint32  g_billPay = 0; 
 static volatile uint32  g_coinPay = 0;
 static volatile uint32  g_payMoney = 0;
@@ -34,15 +43,13 @@ void task_dev(void *pdata)
 {
 	uint8 temp;
 	pdata = pdata;
-	
-	MDB_billInit();
-	MDB_coinInit();
+	msleep(500);
 	while(1){
+		//print_dev("task_dev\r\n");
 		temp = MDB_getBillAcceptor();
 		if(temp == BILL_ACCEPTOR_MDB){
 			billTaskPoll();
 		}
-
 		temp = MDB_getCoinAcceptor();
 		if(temp == COIN_ACCEPTOR_MDB){
 			coinTaskPoll();
@@ -52,7 +59,7 @@ void task_dev(void *pdata)
 		if(temp == COIN_DISPENSER_HOPPER){
 			HP_task();
 		}	
-			
+		
 		if(g_pay == DEV_PAY_READY){
 			//g_changedMoney = MDB_bill_payout(g_payMoney);
 			g_changedMoney = MDB_coin_payout(g_payMoney);

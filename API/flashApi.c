@@ -60,6 +60,9 @@ unsigned char FM_readFromFlash(void)
 									buf[index + 2],buf[index + 3]);
 		index += 4;
 	}
+	
+	stMdb.pointValue = buf[index++];
+	
 	return 1;
 }
 
@@ -87,7 +90,7 @@ unsigned char FM_writeToFlash(void)
 		buf[index++] = L1UINT32(stHopper[i].ch);
 	}
 	
-	
+	buf[index++] = stMdb.pointValue;
 	
 
 	saveFlash(0x00,buf,index);

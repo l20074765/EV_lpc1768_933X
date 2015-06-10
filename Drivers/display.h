@@ -160,7 +160,7 @@ void led_dispaly_mima(unsigned char type,unsigned char *num);
 
 void led_err_display(unsigned char type);
 void led_display(unsigned char led1,unsigned char led2,unsigned char led3,unsigned char led4);
-void led_display_large_digit(unsigned int value);
+
 
 
 #endif   

@@ -29,8 +29,7 @@ extern volatile uint16_t Hptime1,Hptime2,Hptime3;
 
 
 extern volatile uint16_t WaitCmdTimer;
-extern volatile uint16_t WaitMoneyInTimer;
-extern volatile uint32_t WaitMoneyInTimer_1;
+
 extern volatile unsigned short HpHandleTimer;
 
 
@@ -118,10 +117,6 @@ void TIMER0_IRQHandler (void)
 		RS232WAITRECVPACKTIME--;
 	if(UART3RECVACKMSGTIMEOUT)
 		UART3RECVACKMSGTIMEOUT--;
-	if(WaitMoneyInTimer)
-		WaitMoneyInTimer--;
-	if(WaitMoneyInTimer_1)
-		WaitMoneyInTimer_1--;
 
 	if(TestPluse)
 		TestPluse--;
@@ -144,18 +139,10 @@ void TIMER1_IRQHandler (void)
 {
 	OSIntEnter();
 	T1IR = 1;
-
-#if 1 //changed by yoc 2014.03.24	
-	//if(SYSPara.CoinType == VMC_COIN_PARALLEL)
-	//	ScanPPCoinChannel();
-	//else if(SYSPara.CoinType == VMC_COIN_SERIAL)	
-	//	ScanSPCoinChannel(); 
-#else
-	if(GetParallelCoinAcceptorStatus() == 0x01)
-		ScanPPCoinChannel();
-	if(GetSerialCoinAcceptorStatus() == 0x01)
-		ScanSPCoinChannel(); 
-#endif
+	if(MDB_getCoinAcceptor() == COIN_ACCEPTOR_PPLUSE)
+		PCOIN_scanParallelPluse();
+	else if(MDB_getCoinAcceptor() == COIN_ACCEPTOR_SPLUSE)	
+		PCOIN_scanSerialPluse(); 
 	OSIntExit();
 }
 /*********************************************************************************************************

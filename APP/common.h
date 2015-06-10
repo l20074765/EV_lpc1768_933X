@@ -57,60 +57,6 @@
 
 
 
-/************************************************************************************
-*系统参数结构体
-***************************************************************************************/
-struct STSYSPARAM
-{
-	//硬币器类型：0——无硬币器    1——串行硬币器    2——并行硬币器
-	unsigned char CoinType;
-	//纸币器类型：0——无纸币器	 1——GBA纸币器	  2——MDB协议纸币器
-	unsigned char BillType;
-	//找零器类型：1——无找零器	1——Hopper找零器   2——MDB找零器
-	unsigned char DispenceType;
-	//当前系统设置小数点位数
-	unsigned char nPoinValue;
-
-	unsigned char TraceFlag;//调试开关
-
-	unsigned char  armSN[2];
-	unsigned char vmcType;//小机型
-	unsigned int  macSN;
-
-	unsigned char logo;
-	unsigned char initOK;//系统初始化标志
-	unsigned int  maxHuodaoPrice;//主柜货道最大单价
-	
-};
-
-extern struct STSYSPARAM SYSPara;
-
-
-
-/************************************************************************************
-*纸币器硬币器 hopper通道面值结构体
-***************************************************************************************/
-
-struct STDevValue
-{
-	//纸币器相关参数
-	uint32_t BillValue[8];	    
-    uint8_t  BillLevel;			  //纸币器等级
-	uint16_t BillCode;		  //国家代码
-	uint16_t BillScale;			  //比例因子
-	uint16_t BillDecimal;		  //10^小数位数
-	uint16_t BillStkCapacity;	  //储币容量
-	uint16_t BillSecurity;		  //安全等级
-	uint8_t  BillEscrowFun;		  //暂存功能
-	uint8_t  billIDENTITYBuf[36];  //Identification
-
-	uint32_t hpBaseChange;
-	uint16_t HpValue[3];
-	uint32_t CoinValue[8];
-};
-
-extern struct STDevValue stDevValue;
-
 
 /************************************************************************************
 *设备状态结构体

@@ -15,7 +15,7 @@
 #include "..\config.h"
 
 
-#define  DEBUG_MDB
+//#define  DEBUG_MDB
 #ifdef 	 DEBUG_MDB
 #define  print_mdb(...)       Trace(__VA_ARGS__)
 #else

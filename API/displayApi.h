@@ -20,6 +20,10 @@ void initDisplay(void);
 
 void ledPaomaDisplay(void);
 void LED_showData(uint32 data);
+void LED_showAmount(uint32 amount);
+void LED_showLargeData(uint32 value,uint8 point);
+void LED_showLargeDataByPage(uint32 value,uint8 point);
+void LED_show(char *format,...);
 void LED_showString(char *str);
 void disp_init_page(unsigned char type);
 void disp_err_page(void);

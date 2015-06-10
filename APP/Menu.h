@@ -7,7 +7,7 @@
 uint8 MN_userMenu(void);
 uint8 MN_adminMenu(void);
 uint8 MN_isMenuEntered(void);
-
+uint8 MN_getKey(void);
 
 
 

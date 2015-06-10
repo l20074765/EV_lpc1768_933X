@@ -436,51 +436,6 @@ void led_dispaly_off(void)
 }
 
 
-/*********************************************************************************************************
-** Programmer:		 led_display_large_digit		
-** Function name:          
-** Descriptions:        数码管显示滚动数据
-** output parameters:       none
-** Returned value:          none
-*********************************************************************************************************/
-void led_display_large_digit(unsigned int value)
-{
-unsigned int temp;
-	//unsigned int temp = amountTurnByPoint(value);//12340  -->turn-->1234  
-	unsigned char index = 0,num = 0,buf[30] ={0};//声请最高12位的数据
-	if(!temp)
-		return;
-	
-	while(temp)//将大数 拆分到数组中去
-	{
-		if(!num)
-		{
-			num += 4;
-			buf[num++] = ledTab[0];
-			buf[num++] = ledTab[temp % 10] | L8_8;
-		}
-		else
-			buf[num++] = ledTab[temp % 10];
-		temp /= 10;	
-	}
-	num += 4;
-	
-	//  " ----0.4321----"  这是一幅画 固定不动 假想让LED动
-	index = num;
-	while(1)
-	{		
-		led_display(buf[index - 1],buf[index - 2],buf[index - 3],buf[index - 4]) ;
-		if(index >= 4)
-			index --;
-		else
-			index = num;
-		
-		//if(ReadKeyValue() == 'C')
-		//	return;
-		OSTimeDly(200/5);
-		
-	}
-}
 
 
 /*********************************************************************************************************

@@ -4,7 +4,7 @@
 #define DEBUG_MENU
 
 #ifdef 	DEBUG_MENU
-#define print_menu(...)	do{Trace("MENU:");Trace(__VA_ARGS__);}while(0)
+#define print_menu(...)	Trace(__VA_ARGS__)
 #else
 #define print_menu(...)
 #endif
@@ -55,21 +55,66 @@ uint8 MN_userMenu(void)
 }
 
 
-
-uint32 MN_getInputValue(uint32 value)
+/*********************************************************************************************************
+** Function name:       MN_getInputValue
+** Descriptions:        通道面值设置页面
+** input parameters:    
+** output parameters:   无
+** Returned value:      1 配置有更改  0 配置无更改
+*********************************************************************************************************/
+uint8 MN_getInputValue(uint32 *ch,uint8 in)
 {
-	uint8 key,returnFlag = 0;
-	uint32 temp = 0;
-	LED_showData(value);
+	uint8 key,returnFlag = 0,toFlush = 1,isEdit = 0,isChanged = 0;
+	uint32 temp = 0,value;
+	value = MDB_valueFromCents(ch[in]);
+	temp = value;
 	while(1){
+		if(toFlush == 1){
+			toFlush = 0;
+			LED_showAmount(temp);
+		}
 		key = MN_getKey();
 		switch(key){
 			case '1': case '2': case '3': case '4': case '5':case '6':case '7':case '8':case '9':case '0':
-				temp = temp * 10 + (key - '0');
-				
-			break;
-			
+				if(isEdit){
+					temp = temp * 10 + (key - '0');
+					toFlush = 1;
+				}
+				break;
+			case 'E':
+				if(isEdit){
+					isEdit = 0;
+					ch[in] = MDB_valueToCents(temp);
+					LED_showString("####");
+					msleep(500);	
+					LED_showAmount(temp);	
+					msleep(500);
+					returnFlag = 1;	
+					isChanged = 1;
+				}
+				else{
+					LED_showString("####");
+					msleep(200);
+					isEdit = 1;
+					temp = 0;
+				}
+				toFlush = 1;
+				break;
+			case 'C':
+				if(isEdit){
+					isEdit = 0;
+					toFlush = 1;
+					temp = value;
+				}
+				else{
+					returnFlag = 1;
+				}
+				break;
 			default:break;
+		}
+		
+		if(returnFlag == 1){
+			return isChanged;
 		}
 		
 	}
@@ -77,151 +122,272 @@ uint32 MN_getInputValue(uint32 value)
 
 
 /*********************************************************************************************************
-** Function name:       setDeviceChannelValue
+** Function name:       MN_setChannel
 ** Descriptions:        设置交易设备通道值菜单
-** input parameters:    type 1纸币器 2硬币器 3hopper找零器
+** input parameters:    1:纸币器 2 硬币器  3hopper找零器
 ** output parameters:   无
-** Returned value:      无
+** Returned value:      1 配置有更改  0 配置无更改
 *********************************************************************************************************/
-void setDeviceChannelValue(uint8 type)
+uint8 MN_setChannel(uint8 type)
 {
-	uint8 key,enterEdit = 0,subKey,index = 0,topReturnFlag = 0,subMenu = 0,topIndex = 0;
-	uint32 value;
-	
-	LED_showString("A01.0");
+	uint8 key,i,index = 0,topReturnFlag = 0;
+	uint8 topFlush = 1;
+	uint32 ch[16] = {0};
+	uint16 isChanged = 0;
 	while(1){
+		if(topFlush == 1){
+			topFlush = 0;
+			for(i = 0;i < 16;i++){
+				if(type == 1)
+					ch[i] = stBill.setup.ch[i];
+				else if(type == 2)
+					ch[i] = stPcoin.ch[i];
+				else if(type == 3)
+					ch[i] = stHopper[i].ch;
+				else 
+					ch[i] = ch[i];
+			}
+			LED_show("A0%d.0",type);
+		}
 		key = MN_getKey();
 		switch(key){
-			case '1':
-				LED_showString("A01.1");
-				value = MN_getInputValue(value);
+			case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8':
+				LED_show("A0%d.%c",type,key);
+				index = key - '0';
 				break;
-			case 0x0e:
-				if(topIndex)
-					topIndex = 0;
-				else
-					topReturnFlag = 1;
-
-				print_log("topReturnFlag = %d\r\n",topReturnFlag);
-				displayAdminMemuLED(menu,topIndex);
-				break;
-			case 0x0f://进入下一级菜单
-				if(topIndex)
-				{
-					enterEdit = 0;
-					if(type == 3 && topIndex > 3)
-					{
-						subMenu = 0;
-						displayAdminMemuLED(menu,topIndex);
-					}
-					else
-					{
-						index = topIndex;
-						if(type == 1)
-							value = amountTurnByPoint(stDevValue.BillValue[index - 1]);
-						else if(type == 2)
-							value = amountTurnByPoint(stDevValue.CoinValue[index - 1]);
-						else if(type == 3)
-							value = amountTurnByPoint(stDevValue.HpValue[(index - 1) % 3]);
-						else 
-							value = 0;
-						
-						subMenu = 1;
-						DisplayDecimalNumberWithDot(value,SYSPara.nPoinValue);
-					}
-
-					
+			case 'C':
+				if(index > 0){
+					index = 0;
+					topFlush = 1;
 				}
-				print_log("subMenu = %d, index = %d\r\n",subMenu,index);	
+				else{
+					topReturnFlag = 1;
+				}
+				break;
+			case 'E'://进入下一级菜单
+				if(index > 0){
+					if(MN_getInputValue(ch,index-1) > 0){ //有更改需要保存flash
+						for(i = 0;i < 16;i++){
+							if(type == 1)
+								stBill.setup.ch[i] = ch[i];
+							else if(type == 2)
+								stPcoin.ch[i] = ch[i];
+							else if(type == 3)
+								stHopper[i].ch = ch[i];
+							else
+								ch[i] = ch[i];
+						}
+						FM_writeToFlash();
+						isChanged++;
+					}
+					index = 0;
+				}
+				
+				topFlush = 1;	
 				break;
 			default:
-				
 				break;
 		}
 		
-		while(subMenu)
-		{
+		if(topReturnFlag > 0){
+			return (isChanged > 0 ? 1 : 0);
+		}
+		msleep(50);
+	}
 			
-			subKey = GetKeyInValue();
-			if(subKey == 0x0f)
-			{
-				enterEdit = 1;
-				value = 0;
-				DisplayDecimalNumberWithDot(0,0);	
-			}
-			else if(subKey == 0x0e)
-			{	
-				subMenu = 0;//退出
-				displayAdminMemuLED(menu,topIndex);	
-			}
-			
-				
-			while(enterEdit)//进入编辑模式
-			{
-				subKey = GetKeyInValue();
-				switch(subKey)
-				{
-					case 0x01: case 0x02: case 0x03: case 0x04: case 0x05:case 0x06:case 0x07:case 0x08:case 0x09:case 0x00:
-						value = value * 10 + subKey;
-						DisplayDecimalNumberWithDot(value,SYSPara.nPoinValue);
-						break;
-					case 0x0e://取消修改
-						if(value)
-						{
-							DisplayDecimalNumberWithDot(0,0);
-							value = 0;
-						}
-						else
-						{
-							enterEdit = 0;
-							if(type == 1)
-								value = amountTurnByPoint(stDevValue.BillValue[index - 1]);
-							else if(type == 2)
-								value = amountTurnByPoint(stDevValue.CoinValue[index - 1]);
-							else if(type == 3)
-								value = amountTurnByPoint(stDevValue.HpValue[(index - 1) % 3]);
-							else
-								value = 0;
-							DisplayDecimalNumberWithDot(value,SYSPara.nPoinValue);
-						}
-							
+}
+
+uint8 MN_setRato(ST_CHANGE_RATO *rato)
+{
+	uint8 key,returnFlag = 0,toFlush = 1,isEdit = 0,isChanged = 0;
+	uint32 temp = 0,value;
+	value =  MDB_valueFromCents(rato->amount);
+	temp = value;
+	while(1){
+		if(toFlush == 1){
+			toFlush = 0;
+			LED_showAmount(temp);
+		}
+		key = MN_getKey();
+		switch(key){
+			case '1': case '2': case '3': case '4': case '5':case '6':case '7':case '8':case '9':case '0':
+				if(isEdit){
+					temp = temp * 10 + (key - '0');
+					toFlush = 1;
+				}
+				break;
+			case 'E':
+				if(isEdit){
+					isEdit = 0;
+					rato->amount = MDB_valueToCents(temp);
+					LED_showString("####");
+					msleep(500);	
+					LED_showAmount(temp);	
+					msleep(500);
+					returnFlag = 1;	
+					isChanged = 1;
+				}
+				else{
+					LED_showString("####");
+					msleep(200);
+					isEdit = 1;
+					temp = 0;
+				}
+				toFlush = 1;
+				break;
+			case 'C':
+				if(isEdit){
+					isEdit = 0;
+					toFlush = 1;
+					temp = value;
+				}
+				else{
+					returnFlag = 1;
+				}
+				break;
+			default:break;
+		}
+		
+		if(returnFlag == 1){
+			return isChanged;
+		}
+		
+		
+	}
+	
+	
+}
+
+
+/*********************************************************************************************************
+** Function name:       MN_setBillRato
+** Descriptions:        设置纸币兑币比例
+** input parameters:    
+** output parameters:   无
+** Returned value:      1 配置有更改  0 配置无更改
+*********************************************************************************************************/
+uint8 MN_setBillRato(ST_CHANGE_RATO *rato)
+{
+	uint8 key,i,index = 0,topReturnFlag = 0,isEdit = 0;
+	uint8 topFlush = 1;
+	uint32 ch[16] = {0};
+	uint16 isChanged = 0;
+	while(1){
+		if(topFlush == 1){
+			topFlush = 0;
+			LED_showString("A05.0");
+		}
+		key = MN_getKey();
+		switch(key){
+			case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8':
+				LED_show("A05.%c",key);
+				index = key - '0';
+				break;
+			case 'C':
+				if(index > 0){
+					index = 0;
+					topFlush = 1;
+				}
+				else{
+					topReturnFlag = 1;
+				}
+				break;
+			case 'E'://进入下一级菜单
+				if(index > 0){
+					if(MN_setRato(&rato[index - 1]) > 0){ //有更改需要保存flash
 						
-						break;
-					case 0x0f://确定修改
-						led_dispaly_off();
-						OSTimeDly(600/5);
-						if(type == 1)
-							stDevValue.BillValue[index - 1] = amountTurnTocents(value);
-						else if(type == 2)
-							stDevValue.CoinValue[index - 1] = amountTurnTocents(value);
-						else if(type == 3)
-							stDevValue.HpValue[(index - 1) % 3] = amountTurnTocents(value);
-						
-						enterEdit = 0;
-						saveSystemParaFromFlash();
-						DisplayDecimalNumberWithDot(value,SYSPara.nPoinValue);
-						break;
-					default:
-						break;
+						FM_writeToFlash();
+						isChanged++;
+					}
+					index = 0;
 				}
 				
-				OSTimeDly(10);	
-			}
-			
-			OSTimeDly(10);	
-
+				topFlush = 1;	
+				break;
+			default:
+				break;
 		}
-
-		if(topReturnFlag)
-			return;
-	
-		OSTimeDly(10);
-	
+		
+		if(topReturnFlag > 0){
+			return (isChanged > 0 ? 1 : 0);
+		}
+		msleep(50);
 	}
-		
 	
-		
 }
+
+
+
+/*********************************************************************************************************
+** Function name:       MN_setPointValue
+** Descriptions:        设置小数点
+** input parameters:    无
+** output parameters:   无
+** Returned value:      1 配置有更改  0 配置无更改
+*********************************************************************************************************/
+uint8 MN_setPointValue(uint8 *p)
+{
+	uint8 key,returnFlag = 0,isEdit = 0;
+	uint8 topFlush = 1,isChanged = 0;
+	uint8 point;
+	point = *p;
+	while(1){
+		if(topFlush == 1){
+			topFlush = 0;
+			LED_showData(point);
+			print_menu("point=%d\r\n",point);
+		}
+		key = MN_getKey();
+		switch(key){
+			case '0':case '1': case '2': case '3':
+				if(isEdit){
+					point = key - '0';
+					topFlush = 1;
+					
+				}
+				break;
+			case 'C':
+				if(isEdit){
+					isEdit = 0;
+					point = *p;
+					topFlush = 1;
+				}
+				else{
+					returnFlag = 1;
+				}
+				break;
+			case 'E':
+				if(isEdit){
+					isEdit = 0;
+					*p = point;
+					LED_showString("####");
+					msleep(500);	
+					LED_showData(point);	
+					msleep(500);
+					returnFlag = 1;	
+					FM_writeToFlash();
+					isChanged = 1;
+				}
+				else{
+					LED_showString("####");
+					msleep(200);
+					isEdit = 1;
+					point = 0;
+				}
+				topFlush = 1;
+				
+				break;
+			default:
+				break;
+		}
+	
+		if(returnFlag){
+			return isChanged;
+		}
+		msleep(50);
+	}
+}
+
 
 
 /*********************************************************************************************************
@@ -229,32 +395,59 @@ void setDeviceChannelValue(uint8 type)
 ** Descriptions:        管理员菜单
 ** input parameters:    无
 ** output parameters:   无
-** Returned value:      无
+** Returned value:      1 配置有更改  0配置无更改
 *********************************************************************************************************/
 uint8 MN_adminMenu(void)
 {
-	uint8 key,entered = 1;
-	LED_showString("A00.0");
-	while(entered){
+	uint8 key,toFlush = 1,topReturnFlag = 0;
+	uint16 isChanged = 0;
+	while(1){
+		if(toFlush == 1){
+			toFlush = 0;
+			LED_showString("A00.0");
+		}
 		key = MN_getKey();
 		switch(key){
 			case '1': //配置纸币器通道面值
 				LED_showString("A01.0");
+				isChanged += MN_setChannel(1);
+				toFlush = 1;
 				break;
 			case '2': //配置硬币器通道面值
 				LED_showString("A02.0");
+				isChanged += MN_setChannel(2);
+				toFlush = 1;
 				break;
-			
+			case '3': //配置hopper通道面值
+				LED_showString("A03.0");
+				isChanged += MN_setChannel(3);
+				toFlush = 1;
+				break;
+			case '4': //配置小数点
+				LED_showString("A04.0");
+				msleep(500);
+				LED_showString("####");
+				msleep(500);
+				isChanged += MN_setPointValue(&stMdb.pointValue);
+				toFlush = 1;
+				break;
+			case '5': //配置纸币兑零比例
+				LED_showString("A05.0");
+				isChanged += MN_setBillRato(stMdb.billRato);
+				toFlush = 1;
+				break;
 			case 'C':
-				entered = 0;
+				topReturnFlag = 1;
 				break;
 			default:break;
 		
 		}
-	
+		if(topReturnFlag == 1){
+			return (isChanged > 0) ? 1 : 0;
+		}
+		
+		msleep(50);
 	}
-	
-	return 0;
 }
 
 

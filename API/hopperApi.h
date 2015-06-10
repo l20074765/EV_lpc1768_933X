@@ -47,7 +47,7 @@ typedef struct _st_hopper_level_{
     uint32 		ch;//本级别通道面值
 	ST_HOPPER 	*hopper[HP_SUM];//定义hopper斗结构体指针数组
 }ST_HOPPER_LEVEL;
-
+extern ST_HOPPER_LEVEL stHopperLevel[HP_SUM];
 
 
 void HP_task(void);
@@ -56,6 +56,7 @@ void HP_init(void);
 uint8 HP_setCh(uint8 no,uint32 value);
 uint8 hopperChangerFailCheck(const uint32 remainAmount);
 uint8 HP_payout_by_addr(ST_HOPPER *hopper,uint16 num);
+uint8 HP_send_check(ST_HOPPER *hopper);
 #endif
 
 

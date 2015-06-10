@@ -5,7 +5,7 @@
 #define DEBUG_MAIN
 
 #ifdef 	DEBUG_MAIN
-#define print_main(...)	do{Trace("MAIN:");Trace(__VA_ARGS__);}while(0)
+#define print_main(...)	Trace(__VA_ARGS__)
 #else
 #define print_main(...)
 #endif
@@ -33,26 +33,12 @@
 #endif
 
 
-//MAIN
-#if 1
-#define MAIN_START						(1)//交易开始
-#define MAIN_FREE						(2)//交易空闲
-#define MAIN_CHECK_GOODS				(4)//出货前检查
-#define MAIN_OUTGOODS					(5)//出货
-#define MAIN_OVER						(6)//交易结束
-#define MAIN_WEIHU						(7)//维护模式
-#define MAIN_FAULT						(0x16)//故障模式
-#define MAIN_PAYOUT						(9)//找零
-#endif
-
-
 
 static volatile uint8 g_enterMenu = 0;//维护模式标志
 
 
 volatile unsigned int TestPluse;
-volatile uint16_t WaitMoneyInTimer;
-volatile uint32_t WaitMoneyInTimer_1;
+
 
 uint32_t nMinDispMoney = 0;
 unsigned int MaxColumnMoney=0;
@@ -63,17 +49,7 @@ volatile uint16_t WaitCmdTimer;
 
 
 
-/*********************************************************************************************************
-** Function name:       CreateMBox
-** Descriptions:        为任务之间通信创建邮箱和信号量
-** input parameters:    无
-** output parameters:   无
-** Returned value:      无
-*********************************************************************************************************/
-void CreateMBox(void)
-{
-	
-}
+
 
 
 
@@ -96,11 +72,83 @@ void SystemInit(void)
 	InitTimer(0,240000);
 	InitRtc();
 	RTCStartOrStop(1);
-	InitKeyboard();//维护按键初始化
-	EnableKeyBoard();
 	InitDisplay();
 	LED_showString("EU1.4");//显示版本号
-	msleep(1500);		
+	msleep(1500);	
+	LED_showString("E---");
+	InitKeyboard();//维护按键初始化
+	EnableKeyBoard();
+	LED_showString("E--1");
+	msleep(100);	
+}
+
+
+void MT_devInit(void)
+{
+	uint8 res,type,i;
+	//初始化硬币器
+	
+	type = MDB_getCoinAcceptor();
+	if(type == COIN_ACCEPTOR_PPLUSE){
+		LED_show("CO--");
+		PCOIN_initParallelPluse(stMdb.highEnable);
+		res = 1;
+		LED_show("CO-1%d",res);
+	}
+	else if(type == COIN_ACCEPTOR_SPLUSE){
+		LED_show("CO--");
+		PCOIN_initSerialPluse(stMdb.highEnable);
+		res = 1;
+		LED_show("CO-1%d",res);
+	}
+	msleep(100);
+	
+	
+	type = MDB_getCoinDispenser();
+	if(type == COIN_DISPENSER_HOPPER){
+		LED_show("HP--");
+		HP_init();
+		msleep(500);
+		for(i = 0;i < HP_SUM;i++){
+			if(stHopper[i].ch > 0){
+				LED_show("HP%d-",i + 1);
+				res = HP_send_check(&stHopper[i]);
+				if(res == 1){
+					LED_show("HP%d%d",i + 1,1);
+					msleep(500);
+				}
+				else{
+					LED_show("HP%d%d",i + 1,0);
+					msleep(1500);
+				}
+			}
+		}
+	}
+	msleep(100);
+
+	type = MDB_getBillAcceptor();
+	if(type == BILL_ACCEPTOR_MDB){
+		stBill.s.status |= BILL_BIT_FAULT;
+		stBill.s.errNo |= BILL_ERR_COM;
+		LED_show("BL--");	
+		for(i = 0;i < 3;i++){
+			res = billInit();
+			if(res == 1){
+				stBill.s.status &= ~BILL_BIT_FAULT;
+				stBill.s.errNo = 0;
+				LED_show("BL-1");
+				break;
+			}
+			else{
+				msleep(500);
+			}
+		}
+		
+		if(i >= 3){
+			LED_show("BL-0");
+			msleep(2000);
+		}
+	}
 }
 
 
@@ -117,6 +165,12 @@ void SystemParaInit(void)
 	memset((void *)&stCoin,0,sizeof(stCoin));
 	memset((void *)&stMdb,0,sizeof(stMdb));
 	FM_readFromFlash();
+	MDB_setBillAcceptor(BILL_ACCEPTOR_MDB);
+	MDB_setBillDispenser(BILL_DISPENSER_MDB);
+	MDB_setCoinAcceptor(COIN_ACCEPTOR_PPLUSE);
+	MDB_setCoinDispenser(COIN_DISPENSER_HOPPER);
+	
+	
 }
 
 
@@ -132,8 +186,6 @@ static uint8 MT_checkMenu(const uint8 state)
 {
 
 	g_enterMenu = MN_isMenuEntered();
-	
-	
 	if(g_enterMenu == 1){
 		MDB_coinEnable(0);
 		MDB_billEnable(0);
@@ -158,6 +210,7 @@ static uint8 MT_checkMenu(const uint8 state)
 			MDB_billEnable(1);
 		}	
 		g_enterMenu = 0;//跳出维护 清标志
+		
 		return 1;
 	}
 	return 0;
@@ -195,6 +248,7 @@ void MT_checkDev(void)
 *********************************************************************************************************/
 uint8 MT_checkPayout(uint32 amount)
 {
+	
 	return 0;
 }
 
@@ -251,7 +305,8 @@ void setPayKey(const unsigned char flag)
 static uint8 hopperIsEmpty(void)
 {
 	uint8 i;
-	for(i = 0;i < 3;i++){
+	for(i = 0;i < HP_SUM;i++){
+		print_main("[%d].ch=%d s = %d\r\n",i,stHopper[i].ch,stHopper[i].state);
 		if(stHopper[i].ch > 0 && stHopper[i].state != HP_STATE_QUEBI){
 			return 0;
 		}
@@ -270,9 +325,9 @@ static uint8 hopperIsEmpty(void)
 void task_trade(void)
 {
 	uint8 err,billtype=0,hopperState = 0,hasBuy = 0,rcx;
-	uint32 iouMoney;
+	uint32 iouMoney = 0;
 	uint8 state = 0;
-	static uint32 remainAmount = 0,curBillAmount = 0,curCoinAmount = 0;//当前剩余金额invalue = 0,isBuyGoods = 0,HpOutMoney=0,
+	static uint32 remainAmount = 0,curBillAmount = 0,curCoinAmount = 0;
 	
 	state = TRADE_BEGIN;
 	disp_clear_screen();
@@ -290,7 +345,7 @@ void task_trade(void)
 				state = TRADE_DISP;
 				break;
 			case TRADE_DISP://显示欢迎光临
-				disp_free_page(hopperIsEmpty());
+				LED_showAmount(0);
 				state = TRADE_BILLIN;
 				break;
 			case TRADE_BILLIN:
@@ -302,13 +357,20 @@ void task_trade(void)
 				remainAmount = curBillAmount + curCoinAmount;
 				if(remainAmount > 0){ // 有金额进入找零环节
 					//显示金额
-					if(MT_checkPayout(remainAmount)){ //检查是否可找零
+					LED_showAmount(remainAmount);
+					if(MT_checkPayout(remainAmount) > 0){ //检查是否可找零
 						state = TRADE_HPOUT;
 					}
 				}
 				else{ //空闲状态 
 					MT_checkMenu(state); //检测按键
 					MT_checkDev();	//检测设备状态
+					if(hopperIsEmpty()){
+						LED_showString("HP00");
+					}
+					else{
+						LED_showAmount(0);
+					}
 				}
 				
 				break;
@@ -322,7 +384,7 @@ void task_trade(void)
 				break;
 		}
 		
-		OSTimeDly(10);
+		msleep(50);
 	}	
 
 

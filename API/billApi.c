@@ -721,7 +721,7 @@ uint8 billTaskPoll(void)
 	BILL_STATE *state = &stBill.s;
 	uint8 res,temp;
 	static uint8 comErr = 5;
-	
+	//print_bill("s= %d,e=%d\r\n",state->status,state->errNo);
 	if((state->status & BILL_BIT_FAULT) && (state->errNo & BILL_ERR_COM)){
 		if(Timer.timer_bill_reset == 0){
 			res = billInit();
@@ -791,7 +791,6 @@ uint8 billTaskPoll(void)
 				}
 			}
 		}
-		
 		if(comErr >= 5){
 			state->status |= BILL_BIT_FAULT;
 			state->errNo |= BILL_ERR_COM;

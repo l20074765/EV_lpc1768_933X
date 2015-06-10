@@ -56,6 +56,7 @@ void InitKeyboard(void)
 {
 	DisabaleKeyBoard();
 	zyIsrSet(NVIC_EINT2,(unsigned long)EINT2_IsrHandler,PRIO_TEN);	
+	QKey = OSQCreate(&KeyValueQ[0],KEY_QUEUE_SIZE);
 	EXTINT   = 0x00000007;		//«Â÷–∂œ
 	EXTMODE	 = KEYINTERRUPUT;	//±ﬂ—ÿ¥•∑¢
 	EXTPOLAR = 0x00000000;
@@ -131,8 +132,6 @@ void DisabaleKeyBoard(void)
 *********************************************************************************************************/
 void EnableKeyBoard(void)
 {
-
-	QKey = OSQCreate(&KeyValueQ[0],KEY_QUEUE_SIZE);
 	PINSEL4 |= (P2_12_EINT2<<24);
 	EXTINT   = 0x00000007;	
 	EXTMODE	 = KEYINTERRUPUT;

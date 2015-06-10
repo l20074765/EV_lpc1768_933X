@@ -13,7 +13,6 @@
 ** Descriptions:        The original version        
 ********************************************************************************************************/
 #include "..\config.h"
-#include "SailControl.h"
 #include "Global.h"
 #include "Menu.h"
 #include "..\API\task_trade.h"
@@ -25,7 +24,7 @@
 *********************************************************************************************************/
 #define TASK_Trade_ID                          7                             /*   交易主任务ID                       */
 #define TASK_Trade_PRIO                        TASK_Trade_ID                      /* 任务优先级                   */
-#define TASK_Trade_STACK_SIZE                  1024                           /* 定义用户堆栈长度             */
+#define TASK_Trade_STACK_SIZE                  2048                           /* 定义用户堆栈长度             */
 OS_STK  TASK_Trade_STACK[TASK_Trade_STACK_SIZE];                                  /* 定义任务B堆栈                */
 extern void    TASK_Trade(void *pdata);                                      /* 声明任务B                    */
 
@@ -37,7 +36,7 @@ extern void    TASK_Trade(void *pdata);                                      /* 
 *********************************************************************************************************/   
 #define TASK_Device_ID                          5                             /* 任务ID                       */
 #define TASK_Device_PRIO                        TASK_Device_ID                      /* 任务优先级                   */
-#define TASK_Device_STACK_SIZE                  512                           /* 定义用户堆栈长度             */
+#define TASK_Device_STACK_SIZE                  1024                           /* 定义用户堆栈长度             */
 OS_STK  TASK_Device_STACK[TASK_Device_STACK_SIZE];                                  /* 定义任务C 堆栈               */
 
 
@@ -62,7 +61,7 @@ void TASK_Trade(void *pvData)
 	pvData = pvData;
 	SystemInit();//系统基本接口初始化
 	SystemParaInit();//系统参数初始化
-	CreateMBox();//建立邮箱、信号量	
+	MT_devInit();
 	
    //创建 设备 包括硬币器 纸币器 hopper找零器 货道任务
 	OSTaskCreateExt(task_dev, 
@@ -75,7 +74,11 @@ void TASK_Trade(void *pvData)
 				(void *)0,
 				OS_TASK_OPT_STK_CHK);
 				
-	task_trade();
+	while(1){
+		task_trade();
+		msleep(1000);
+	}
+				
 	
 }
 

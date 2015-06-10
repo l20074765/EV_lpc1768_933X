@@ -2,7 +2,7 @@
 
 #include "coinApi.h"
 
-#define DEBUG_COIN
+//#define DEBUG_COIN
 
 #ifdef 	DEBUG_COIN
 #define print_coin(...)	Trace(__VA_ARGS__)
