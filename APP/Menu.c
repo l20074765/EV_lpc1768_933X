@@ -197,16 +197,129 @@ uint8 MN_setChannel(uint8 type)
 			
 }
 
+
+
+
+
 uint8 MN_setRato(ST_CHANGE_RATO *rato)
 {
 	uint8 key,returnFlag = 0,toFlush = 1,isEdit = 0,isChanged = 0;
-	uint32 temp = 0,value;
-	value =  MDB_valueFromCents(rato->amount);
-	temp = value;
+	uint32 temp = 0,value,temp32,point,v1;
+	uint8 buf[20] = {0},buf1[20] = {0},index = 0,num,num1,v,i,j,cursor = 0,dataFlush = 1;
+	ST_CHANGE_RATO ratio;
+	
+	//拷贝 比例数据
+	for(i = 0;i < 8;i++){
+		ratio.ch[i] = rato->ch[i];
+		ratio.num[i] = rato->num[i];
+	}
+	ratio.amount = rato->amount;
+
+	
+	
 	while(1){
 		if(toFlush == 1){
 			toFlush = 0;
-			LED_showAmount(temp);
+			if(index == 0){
+				if(dataFlush == 1){
+					LED_showString("####");
+					msleep(500);
+					dataFlush = 0;
+					temp = MDB_valueFromCents(ratio.amount);
+				}
+				LED_showAmount(temp);
+			}
+			else{
+				if(dataFlush == 1){
+					dataFlush = 0;
+					LED_showString("####");
+					msleep(500);
+					
+					temp32 = MDB_valueFromCents(ratio.ch[index - 1]);
+					memset(buf,0,sizeof(buf));	
+					
+					num = 0;num1 = 0;
+					while(temp32 > 0){	//将大数 拆分到数组中去
+						v = temp32 % 10;
+						temp32 /= 10;
+						buf1[num1++] = ledTab[v];	
+					}
+					
+					if(num1 < 4){
+						num = num + (4 - num1);
+					}
+					buf[3] = ledTab[0];
+					for(i = num1;i > 0;i--){
+						buf[num++] = buf1[i - 1];
+					}
+					
+					//插入小数点
+					point = (uint32)stMdb.pointValue;
+					switch(point){
+						case 1:
+							if(buf[2] == 0){
+								buf[2] = ledTab[0] | L8_8;
+							}
+							else{
+								buf[2] |= L8_8;
+							}
+							break;
+						case 2:
+							if(buf[1] == 0){
+								buf[1] = ledTab[0] | L8_8;
+							}
+							else{
+								buf[1] |= L8_8;
+							}
+							if(buf[2] == 0){
+								buf[2] = ledTab[0];
+							}
+							break;
+						case 3:
+							if(buf[0] == 0){
+								buf[0] = ledTab[0] | L8_8;
+							}
+							else{
+								buf[0] |= L8_8;
+							}
+							if(buf[1] == 0){
+								buf[1] = ledTab[0] ;
+							}
+							if(buf[2] == 0){
+								buf[2] = ledTab[0];
+							}
+							break;
+						default:break;
+					}
+					
+				
+					buf[num++] = L8_7; //'-'
+					
+					temp = ratio.num[index - 1];
+					
+					buf[num++] = ledTab[temp / 10];
+					buf[num++] = ledTab[temp % 10];
+					buf[num++] = 0;
+					buf[num++] = 0;
+					buf[num++] = 0;
+					cursor = num -3 - 4;
+				}
+				//  0.08-xx 
+				if(isEdit){
+					buf[num - 6] = L8_4;
+				}
+				else{
+					buf[num - 6] = L8_7;
+				}
+				buf[num - 5] = ledTab[temp / 10];
+				buf[num - 4] = ledTab[temp % 10];
+				
+				led_display(buf[cursor],buf[cursor + 1],
+							buf[cursor + 2],buf[cursor + 3]);
+			
+			}
+			
+			
 		}
 		key = MN_getKey();
 		switch(key){
@@ -215,16 +328,25 @@ uint8 MN_setRato(ST_CHANGE_RATO *rato)
 					temp = temp * 10 + (key - '0');
 					toFlush = 1;
 				}
+				else{	//翻页
+					index = (key - '0') % 9;
+					toFlush = 1;
+					dataFlush = 1;
+				}
 				break;
+				
 			case 'E':
 				if(isEdit){
 					isEdit = 0;
-					rato->amount = MDB_valueToCents(temp);
-					LED_showString("####");
-					msleep(500);	
-					LED_showAmount(temp);	
-					msleep(500);
-					returnFlag = 1;	
+					if(index == 0){
+						ratio.amount = MDB_valueToCents(temp);
+					}
+					else{
+						temp = temp % 100;
+						ratio.num[index - 1] = temp;
+					}
+					toFlush = 1;
+					dataFlush = 1;
 					isChanged = 1;
 				}
 				else{
@@ -239,10 +361,40 @@ uint8 MN_setRato(ST_CHANGE_RATO *rato)
 				if(isEdit){
 					isEdit = 0;
 					toFlush = 1;
-					temp = value;
+					dataFlush = 1;
 				}
 				else{
+					//需要验证 兑币比例合理性 
+					temp = 0;
+					for(i = 0;i < 8;i++){
+						temp += ratio.ch[i] * ratio.num[i];
+					}
+					if(temp == ratio.amount){ //符合比例
+						LED_showString("HP00");
+						rato->amount = ratio.amount;
+						for(i = 0;i < 8;i++){
+							rato->ch[i] = ratio.ch[i];
+							rato->num[i] = ratio.num[i];
+						}
+					}
+					else{
+						LED_showString("HPEE");
+						msleep(1000);
+					}
+					
 					returnFlag = 1;
+				}
+				break;
+			case '>': 		//下翻
+				if(cursor < (num - 4)){
+					cursor++;
+					toFlush = 1;
+				}
+				break;
+			case '<':		//上翻
+				if(cursor > 0){
+					cursor--;
+					toFlush = 1;
 				}
 				break;
 			default:break;
@@ -294,6 +446,7 @@ uint8 MN_setBillRato(ST_CHANGE_RATO *rato)
 				break;
 			case 'E'://进入下一级菜单
 				if(index > 0){
+					
 					if(MN_setRato(&rato[index - 1]) > 0){ //有更改需要保存flash
 						
 						FM_writeToFlash();
@@ -434,6 +587,11 @@ uint8 MN_adminMenu(void)
 			case '5': //配置纸币兑零比例
 				LED_showString("A05.0");
 				isChanged += MN_setBillRato(stMdb.billRato);
+				toFlush = 1;
+				break;
+			case '6': //配置硬币兑零比例
+				LED_showString("A06.0");
+				isChanged += MN_setBillRato(stMdb.coinRato);
 				toFlush = 1;
 				break;
 			case 'C':

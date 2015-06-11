@@ -414,6 +414,7 @@ void LED_showString(char *str)
 	uint8 i,led[10] = {0},in = 0;
 	uint8 len = strlen(str);
 	for(i = 0;i < len;i++){
+		Trace("str[%d]=%c\r\n",i,str[i]);
 		switch(str[i]){
 			case '0' : 	led[in] = ledTab[LED_O]; break;
 			case '1' : 	led[in] = ledTab[LED_1]; break;

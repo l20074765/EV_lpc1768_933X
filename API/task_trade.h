@@ -6,7 +6,7 @@
 void SystemInit(void);
 void SystemParaInit(void);
 void task_trade(void);
-void MT_devInit(void);
+
 #endif
 
 /**************************************End Of File*******************************************************/

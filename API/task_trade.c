@@ -83,73 +83,7 @@ void SystemInit(void)
 }
 
 
-void MT_devInit(void)
-{
-	uint8 res,type,i;
-	//³õÊ¼»¯Ó²±ÒÆ÷
-	
-	type = MDB_getCoinAcceptor();
-	if(type == COIN_ACCEPTOR_PPLUSE){
-		LED_show("CO--");
-		PCOIN_initParallelPluse(stMdb.highEnable);
-		res = 1;
-		LED_show("CO-1%d",res);
-	}
-	else if(type == COIN_ACCEPTOR_SPLUSE){
-		LED_show("CO--");
-		PCOIN_initSerialPluse(stMdb.highEnable);
-		res = 1;
-		LED_show("CO-1%d",res);
-	}
-	msleep(100);
-	
-	
-	type = MDB_getCoinDispenser();
-	if(type == COIN_DISPENSER_HOPPER){
-		LED_show("HP--");
-		HP_init();
-		msleep(500);
-		for(i = 0;i < HP_SUM;i++){
-			if(stHopper[i].ch > 0){
-				LED_show("HP%d-",i + 1);
-				res = HP_send_check(&stHopper[i]);
-				if(res == 1){
-					LED_show("HP%d%d",i + 1,1);
-					msleep(500);
-				}
-				else{
-					LED_show("HP%d%d",i + 1,0);
-					msleep(1500);
-				}
-			}
-		}
-	}
-	msleep(100);
 
-	type = MDB_getBillAcceptor();
-	if(type == BILL_ACCEPTOR_MDB){
-		stBill.s.status |= BILL_BIT_FAULT;
-		stBill.s.errNo |= BILL_ERR_COM;
-		LED_show("BL--");	
-		for(i = 0;i < 3;i++){
-			res = billInit();
-			if(res == 1){
-				stBill.s.status &= ~BILL_BIT_FAULT;
-				stBill.s.errNo = 0;
-				LED_show("BL-1");
-				break;
-			}
-			else{
-				msleep(500);
-			}
-		}
-		
-		if(i >= 3){
-			LED_show("BL-0");
-			msleep(2000);
-		}
-	}
-}
 
 
 /*********************************************************************************************************

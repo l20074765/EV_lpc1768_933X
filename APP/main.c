@@ -61,7 +61,7 @@ void TASK_Trade(void *pvData)
 	pvData = pvData;
 	SystemInit();//系统基本接口初始化
 	SystemParaInit();//系统参数初始化
-	MT_devInit();
+	
 	
    //创建 设备 包括硬币器 纸币器 hopper找零器 货道任务
 	OSTaskCreateExt(task_dev, 
