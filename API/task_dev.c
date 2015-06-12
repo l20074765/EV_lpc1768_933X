@@ -14,11 +14,150 @@ static volatile uint32  g_coinPay = 0;
 static volatile uint32  g_payMoney = 0;
 static volatile uint32  g_changedMoney = 0;
 
+
+
+
 #define DEV_PAY_IDLE		0
 #define DEV_PAY_READY		1
 #define DEV_PAY_FINISH		2
 
 static volatile uint8   g_pay = DEV_PAY_IDLE;
+
+
+
+
+
+#define DEV_QUEUE_SIZE 		20
+
+void *dev_s[DEV_QUEUE_SIZE];
+OS_EVENT *dev_Q_s;
+
+void *dev_r[DEV_QUEUE_SIZE];
+OS_EVENT *dev_Q_r;
+
+
+
+
+Q_MSG dev_msg_s[DEV_QUEUE_SIZE];
+Q_MSG dev_msg_r[DEV_QUEUE_SIZE];
+static uint8 dev_in_s = 0;
+static uint8 dev_in_r = 0;
+
+static void DEV_registerOSQ(void)
+{
+	dev_Q_s = OSQCreate(&dev_s[0],DEV_QUEUE_SIZE);
+	dev_Q_r = OSQCreate(&dev_r[0],DEV_QUEUE_SIZE);
+}
+
+
+
+
+
+
+uint8 DEV_msg_req(uint8 type)
+{
+	uint8 err;
+	dev_msg_s[dev_in_s].type = type;
+	err = OSQPost(dev_Q_s,&dev_msg_s[dev_in_s]); 
+	dev_in_s = (dev_in_s + 1) % DEV_QUEUE_SIZE;
+	
+	return (err == OS_NO_ERR);
+	
+}
+
+
+uint8 DEV_msg_rpt(uint8 type)
+{
+	uint8 err;
+	dev_msg_r[dev_in_r].type = type;
+	err = OSQPost(dev_Q_r,&dev_msg_s[dev_in_r]); 
+	dev_in_r = (dev_in_r + 1) % DEV_QUEUE_SIZE;
+	return (err == OS_NO_ERR);
+}
+
+
+/*********************************************************************************************************			
+** Function name:       DEV_billEnableReq
+** Descriptions:        发送纸币器使能命令
+** output parameters:       none
+** Returned value:          none
+*********************************************************************************************************/
+uint8 DEV_enableReq(uint8 obj,uint8 opt)
+{
+	dev_msg_s[dev_in_s].opt = opt;
+	return DEV_msg_req(DEV_BILL_ENABLE);
+	
+}
+
+
+/*********************************************************************************************************			
+** Function name:       DEV_billEnableRpt
+** Descriptions:        发送纸币器使能命令回应结果
+** output parameters:       none
+** Returned value:          none
+*********************************************************************************************************/
+uint8 DEV_billEnableRpt(Q_MSG *msg)
+{
+	uint8 err;
+	if(msg == NULL){return 0;}
+	MDB_billEnable(msg->opt);
+	//err = DEV_msg_rpt(DEV_BILL_ENABLE);
+	return err;
+	
+}
+
+/*********************************************************************************************************			
+** Function name:       DEV_coinEnableReq
+** Descriptions:        发送硬币器使能命令
+** output parameters:       none
+** Returned value:          none
+*********************************************************************************************************/
+uint8 DEV_coinEnableReq(uint8 opt)
+{
+	dev_msg_s[dev_in_s].opt = opt;
+	return DEV_msg_req(DEV_COIN_ENABLE);
+	
+}
+
+
+/*********************************************************************************************************			
+** Function name:       DEV_coinEnableRpt
+** Descriptions:        发送硬币器使能命令回应结果
+** output parameters:       none
+** Returned value:          none
+*********************************************************************************************************/
+uint8 DEV_coinEnableRpt(Q_MSG *msg)
+{
+	uint8 err;
+	if(msg == NULL){return 0;}
+	MDB_coinEnable(msg->opt);
+	//err = DEV_msg_rpt(DEV_BILL_ENABLE);
+	return err;
+	
+}
+
+
+
+
+static void DEV_reqPoll(void)
+{
+	uint8 i,err;
+	Q_MSG *msg;
+	msg = (Q_MSG *)OSQPend(dev_Q_s,10,&err);
+	if(err == OS_NO_ERR){ //有请求
+		switch(msg->type){
+			case DEV_BILL_ENABLE:
+				DEV_billEnableRpt(msg);
+				break;
+			case DEV_COIN_ENABLE:
+				DEV_coinEnableRpt(msg);
+				break;
+			default:break;
+		}
+	}
+}
+
+
 
 void DEV_payoutReady(uint32 billAmount,uint32 coinAmount)
 {
@@ -43,7 +182,6 @@ void MT_devInit(void)
 {
 	uint8 res,type,i,j;
 	//初始化硬币器
-	
 	type = MDB_getCoinAcceptor();
 	if(type == COIN_ACCEPTOR_PPLUSE){
 		LED_show("CO--");
@@ -116,11 +254,16 @@ void MT_devInit(void)
 }
 
 
+
+
+
+
 void task_dev(void *pdata)
 {
 	uint8 temp;
 	pdata = pdata;
 	
+	DEV_registerOSQ();
 	MT_devInit();
 	
 	msleep(500);
@@ -146,6 +289,9 @@ void task_dev(void *pdata)
 			g_pay = DEV_PAY_FINISH;
 		}
 		
+		
+		
+		DEV_reqPoll();
 		msleep(90);
 	}
 	

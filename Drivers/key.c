@@ -31,7 +31,7 @@
 #define KEY_QUEUE_SIZE 5
 void *KeyValueQ[KEY_QUEUE_SIZE];
 OS_EVENT *QKey;
-volatile unsigned char PostValue[5];
+volatile unsigned char PostValue[KEY_QUEUE_SIZE];
 unsigned char keyIndex = 0;
 
 void ScanDelayTime(unsigned int ms);
@@ -80,12 +80,12 @@ void EINT2_IsrHandler(void)
 	if(PostValue[keyIndex] != 0x00)
 	{
 		err = OSQPost(QKey,(void *)&PostValue[keyIndex]);
-		keyIndex = (++keyIndex) %5;
+		keyIndex = (++keyIndex) %KEY_QUEUE_SIZE;
 		if(err != OS_NO_ERR)
 		{
 			while(--i);
 			err = OSQPost(QKey,(void *)&PostValue[keyIndex]);
-			keyIndex = (++keyIndex) %5;
+			keyIndex = (++keyIndex) %KEY_QUEUE_SIZE;
 		}
 	}
 	SetKeyColOutput();

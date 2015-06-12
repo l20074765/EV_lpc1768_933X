@@ -121,8 +121,8 @@ static uint8 MT_checkMenu(const uint8 state)
 
 	g_enterMenu = MN_isMenuEntered();
 	if(g_enterMenu == 1){
-		MDB_coinEnable(0);
-		MDB_billEnable(0);
+		DEV_coinEnableReq(0);
+		DEV_billEnableReq(0);
 		MN_userMenu();
 		
 	}

@@ -29,11 +29,11 @@ typedef struct __st_hopper_{
     uint8 addr;			//hopper 物理地址
     uint8 no;			//hopper编号
     uint8 state;		//hopper状态  0 正常 1 缺币 2 故障
-	uint8 lastCount;	//上次操作出币数量
 	uint8 level;		//级别分配标志
 	uint8 isCycle;		//循环斗标志
 	uint8 lastPayFail;	//上次找零失败
 	uint8 err_com;			//通信错误次数
+	uint16 lastCount;	//上次操作出币数量
 	uint32 ch;			//通道面值
 	
 }ST_HOPPER;
