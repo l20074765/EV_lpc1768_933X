@@ -96,42 +96,6 @@ void disp_free_page(unsigned char vmcChangeLow)
 
 
 
-/*********************************************************************************************************
-** Function name:       disp_err_page
-** Descriptions:        清屏函数自动识别各种屏
-** input parameters:   
-** output parameters:   无
-** Returned value:      无
-*********************************************************************************************************/
-
-void disp_err_page(void)
-{
-	
-		if(HardWareErr & SYS_ERR_NO_BILL)
-			led_err_display(LED_ERR_BILL);
-		else if(HardWareErr & SYS_ERR_NO_HOPPER)//hopper有故障
-		{
-			if(hopperErrNo & HP_ERR_NO_HOPPER1_FAULT)
-				LED_showString("HP1E");
-			else if(hopperErrNo & HP_ERR_NO_HOPPER1_EMPTY)
-				LED_showString("HP10");
-			else if(hopperErrNo & HP_ERR_NO_HOPPER2_EMPTY)
-				LED_showString("HP20");
-			else if(hopperErrNo & HP_ERR_NO_HOPPER2_FAULT)
-				LED_showString("HP2E");
-			else 
-				LED_showString("HPEE");
-		}	
-		else if(HardWareErr & SYS_ERR_NO_COIN)
-			led_err_display(LED_ERR_COIN);
-		
-	
-}
-
-
-
-
-
 
 
 
@@ -394,11 +358,12 @@ void LED_showData(uint32 data)
 *********************************************************************************************************/
 void LED_showAmount(uint32 amount)
 {
-	if(amount >= 10000){
-		LED_showLargeData(amount,stMdb.pointValue);
+	uint32 temp = MDB_valueFromCents(amount);
+	if(temp >= 10000){
+		LED_showLargeData(temp,stMdb.pointValue);
 	}
 	else{
-		LED_showDataByPoint(amount,stMdb.pointValue);
+		LED_showDataByPoint(temp,stMdb.pointValue);
 	}
 }
 
@@ -414,7 +379,7 @@ void LED_showString(char *str)
 	uint8 i,led[10] = {0},in = 0;
 	uint8 len = strlen(str);
 	for(i = 0;i < len;i++){
-		Trace("str[%d]=%c\r\n",i,str[i]);
+		//Trace("str[%d]=%c\r\n",i,str[i]);
 		switch(str[i]){
 			case '0' : 	led[in] = ledTab[LED_O]; break;
 			case '1' : 	led[in] = ledTab[LED_1]; break;
@@ -502,6 +467,95 @@ void ledPaomaDisplay(void)
 		Timer.led_paoma_timer = 500/10;
 	}						
 	#endif
+	
+}
+
+
+
+void LED_ctrl(uint8 no,uint8 s)
+{
+	no += 4;
+	FIO2DIR |= (0x01UL << no);
+	if(s == 0)
+		FIO2SET |= (0x01UL << no);
+	else
+		FIO2CLR |= (0x01UL << no);
+	
+}
+
+
+void LED_hopperCheck(void)
+{
+	static uint8 tick1 = 0,tick2 = 0;
+	static uint8 led1 = 0,led2 = 0;
+	uint8 i;
+	
+	if(tick1 == 0){	
+		if(led1 == 1){
+			led1 = 0;
+			if(stHopper[0].state == HP_STATE_QUEBI || 
+				stHopper[0].state == HP_STATE_NORMAL){
+				LED_ctrl(1,0);
+			}
+			if(stHopper[1].state == HP_STATE_QUEBI ||
+				stHopper[1].state == HP_STATE_NORMAL){
+				LED_ctrl(2,0);
+			}
+			if(stHopper[2].state == HP_STATE_QUEBI ||
+				stHopper[2].state == HP_STATE_NORMAL){
+				LED_ctrl(3,0);
+			}
+			
+		}
+		else{
+			led1 = 1;
+			if(stHopper[0].state == HP_STATE_QUEBI){
+				LED_ctrl(1,1);
+			}
+			if(stHopper[1].state == HP_STATE_QUEBI){
+				LED_ctrl(2,1);
+			}
+			if(stHopper[2].state == HP_STATE_QUEBI){
+				LED_ctrl(3,1);
+			}
+		}
+		tick1 = 80;
+	}
+	
+	if(tick2 == 0){
+		if(led2 == 1){
+			led2 = 0;
+			if(stHopper[0].state == HP_STATE_FAULT || 
+				stHopper[0].state == HP_STATE_COM)
+				LED_ctrl(1,0);
+			if(stHopper[1].state == HP_STATE_FAULT || 
+				stHopper[1].state == HP_STATE_COM)
+				LED_ctrl(2,0);
+			if(stHopper[2].state == HP_STATE_FAULT || 
+				stHopper[2].state == HP_STATE_COM)
+				LED_ctrl(3,0);
+		}
+		else{
+			led2 = 1;
+			if(stHopper[0].state == HP_STATE_FAULT || 
+				stHopper[0].state == HP_STATE_COM)
+				LED_ctrl(1,1);
+			if(stHopper[1].state == HP_STATE_FAULT || 
+				stHopper[1].state == HP_STATE_COM)
+				LED_ctrl(2,1);
+			if(stHopper[2].state == HP_STATE_FAULT || 
+				stHopper[2].state == HP_STATE_COM)
+				LED_ctrl(3,1);
+		}
+		tick2 = 20;
+	}
+		
+	
+
+	tick1 = (tick1 > 0) ? tick1 - 1 : 0;
+	tick2 = (tick2 > 0) ? tick2 - 1 : 0;
+	
+	
 	
 }
 

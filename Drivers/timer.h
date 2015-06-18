@@ -37,6 +37,7 @@ typedef struct _timer_st_{
 	unsigned short timer_hopper_reset;
 	unsigned short usr_opt;
 	unsigned short usr_changer;
+	unsigned short dev_msg_rpt;
 }TIMER_ST;
 extern TIMER_ST Timer;
 

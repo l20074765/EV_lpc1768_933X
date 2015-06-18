@@ -138,6 +138,57 @@ uint8 MDB_coinEnable(uint8 en)
 }
 
 
+uint32 MDB_billCost(uint32 amount)
+{
+	uint8 temp = MDB_getBillAcceptor();
+	uint32 remainAmount = 0;
+	if(temp == BILL_ACCEPTOR_MDB){
+		if(amount <= stBill.amount.recv_amount){
+			stBill.amount.recv_amount -= amount;
+			remainAmount = 0;
+		}	
+		else{
+			remainAmount = amount - stBill.amount.recv_amount;
+			stBill.amount.recv_amount = 0;
+		}
+			
+	}
+	else{
+		remainAmount = amount;
+	}
+	
+	return remainAmount;
+}
+
+uint32 MDB_coinCost(uint32 amount)
+{
+	uint8 temp = MDB_getCoinAcceptor();
+	uint32 reaminAmount = 0;
+	if(temp == COIN_ACCEPTOR_MDB){
+		if(amount <= stCoin.amount.recv_amount){
+			stCoin.amount.recv_amount -= amount;
+			reaminAmount = 0;
+		}
+		else{
+			reaminAmount = amount - stCoin.amount.recv_amount;
+			stCoin.amount.recv_amount = 0;
+		}
+	}
+	else if(temp == COIN_ACCEPTOR_PPLUSE){
+		reaminAmount = PCOIN_costAmount(amount);
+	}
+	else if(temp == COIN_ACCEPTOR_SPLUSE){
+		reaminAmount = PCOIN_costAmount(amount);
+	}
+	else{
+		reaminAmount = amount;
+	}
+	
+	return reaminAmount;
+}
+
+
+
 
 uint32 MDB_getBillRecvAmount(void)
 {
@@ -168,6 +219,18 @@ uint32 MDB_getCoinRecvAmount(void)
 		return 0;
 	}
 }
+
+void MDB_cost(uint32 cost)
+{
+	uint32 temp32;
+	uint8 temp;
+	temp32 = cost;
+	temp = MDB_getBillAcceptor();
+	if(temp == BILL_ACCEPTOR_MDB){
+		
+	}
+}
+
 
 uint8 MDB_billInit(void)
 {
@@ -376,6 +439,7 @@ uint32 MDB_coin_payout(uint32 payAmount)
 {
 	uint8 type,c_enable,b_enable;
 	uint32 xdata changedAmount;
+	uint16 hp[HP_SUM]= {0};
 	if(payAmount == 0){
 		return 0;
 	}
@@ -405,7 +469,7 @@ uint32 MDB_coin_payout(uint32 payAmount)
 		changedAmount = coinPayout(payAmount);
 	}
 	else if(type == COIN_DISPENSER_HOPPER){
-		changedAmount = HP_payout(payAmount);
+		changedAmount = HP_payout(payAmount,hp);
 	}
 	else{
 		changedAmount = 0;

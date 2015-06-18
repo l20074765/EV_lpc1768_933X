@@ -16,8 +16,16 @@
 #define _DISPLAYAPI_H_
 #include "..\Drivers\board.h"
 
-void initDisplay(void);
 
+
+
+
+void LED_ctrl(uint8 no,uint8 s);
+
+
+
+void initDisplay(void);
+void LED_hopperCheck(void);
 void ledPaomaDisplay(void);
 void LED_showData(uint32 data);
 void LED_showAmount(uint32 amount);
@@ -26,7 +34,6 @@ void LED_showLargeDataByPage(uint32 value,uint8 point);
 void LED_show(char *format,...);
 void LED_showString(char *str);
 void disp_init_page(unsigned char type);
-void disp_err_page(void);
 void disp_free_page(unsigned char vmcChangeLow);
 void disp_clear_screen(void);
 void disp_sale_page(unsigned char hasBuy,unsigned int amount,unsigned char point);

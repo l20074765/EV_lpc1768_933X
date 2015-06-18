@@ -522,74 +522,7 @@ void led_err_display(unsigned char type)
 	tm1637_display();
 }
 
-/*********************************************************************************************************
-** Programmer:				
-** Function name:           led_dispaly_mima
-** Descriptions:         ˝¬Îπ‹√‹¬Î ‰»Î
-** output parameters:       none
-** Returned value:          none
-*********************************************************************************************************/
-void led_dispaly_mima(unsigned char type,unsigned char *num)
-{
-	unsigned char DisBuf[6]; 
 
-
-	switch(type)
-	{
-		case 0:// ----
-			DisBuf[0] = L8_7;
-			DisBuf[1] = L8_7;
-			DisBuf[2] = L8_7;
-			DisBuf[3] = L8_7;
-			break;
-		case 1:
-			DisBuf[0] = L8_7;
-			DisBuf[1] = L8_7;
-			DisBuf[2] = L8_7;
-			DisBuf[3] = ledTab[num[0] % 10];
-			break;
-
-		case 2:
-			DisBuf[0] = L8_7;
-			DisBuf[1] = L8_7;
-			DisBuf[2] = ledTab[num[0] % 10];;
-			DisBuf[3] = ledTab[num[1] % 10];
-			break;
-
-		case 3:
-			DisBuf[0] = L8_7;
-			DisBuf[1] = ledTab[num[0] % 10];
-			DisBuf[2] = ledTab[num[1] % 10];
-			DisBuf[3] = ledTab[num[2] % 10];
-			break;
-		case 4:
-			DisBuf[0] = ledTab[num[0] % 10];
-			DisBuf[1] = ledTab[num[1] % 10];
-			DisBuf[2] = ledTab[num[2] % 10];
-			DisBuf[3] = ledTab[num[3] % 10];
-			break;
-
-		case 10://0000
-			DisBuf[0] = L8_1 | L8_2 | L8_3 | L8_4 | L8_5 | L8_6;
-			DisBuf[1] = L8_1 | L8_2 | L8_3 | L8_4 | L8_5 | L8_6;
-			DisBuf[2] = L8_1 | L8_2 | L8_3 | L8_4 | L8_5 | L8_6;
-			DisBuf[3] = L8_1 | L8_2 | L8_3 | L8_4 | L8_5 | L8_6;
-			break;
-		default:
-			DisBuf[0] = L8_0;
-			DisBuf[1] = L8_0;
-			DisBuf[2] = L8_0;
-			DisBuf[3] = L8_0;
-			break;
-	}
-	
-
-
-	DisBuf[4] = 0x00;
-	DisBuf[5] = 0x00;
-	update_dis_buf(DisBuf);
-	tm1637_display();
-}
 
 /*********************************************************************************************************
 ** Programmer:				

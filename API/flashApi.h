@@ -1,6 +1,8 @@
 #ifndef _FLASH_API_H
 #define _FLASH_API_H
 
+#include "..\Drivers\board.h"
+#include "..\API\hopperApi.h"
 //=======================flash页号==============================
 
 //flash页号最大不超过 0x1FFF = 8191 否则 flash会翻转地址为0x0000
@@ -24,8 +26,26 @@
 
 //=====================================================================
 
+
+typedef struct {
+	uint32 billRecv;
+	uint32 coinRecv;
+	uint32 billChanged;
+	uint32 coinChanged;
+	uint32 iou;
+	uint32 hpChanged[HP_SUM];
+}ST_LOG;
+extern ST_LOG stLog;
+
+
+
+
+
+unsigned char FM_readLogFromFlash(void);
+unsigned char FM_writeLogToFlash(void);
 unsigned char saveFlash(unsigned int addr,unsigned char *buf,unsigned short len);
 unsigned char readFlash(unsigned int addr,unsigned char *buf,unsigned short len);
 unsigned char FM_writeToFlash(void);
 unsigned char FM_readFromFlash(void);
+unsigned char FM_clearLog(void);
 #endif

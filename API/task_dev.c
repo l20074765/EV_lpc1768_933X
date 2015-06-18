@@ -9,21 +9,12 @@
 #define print_dev(...)
 #endif
 
-static volatile uint32  g_billPay = 0; 
-static volatile uint32  g_coinPay = 0;
-static volatile uint32  g_payMoney = 0;
-static volatile uint32  g_changedMoney = 0;
-
 
 
 
 #define DEV_PAY_IDLE		0
 #define DEV_PAY_READY		1
 #define DEV_PAY_FINISH		2
-
-static volatile uint8   g_pay = DEV_PAY_IDLE;
-
-
 
 
 
@@ -34,8 +25,6 @@ OS_EVENT *dev_Q_s;
 
 void *dev_r[DEV_QUEUE_SIZE];
 OS_EVENT *dev_Q_r;
-
-
 
 
 Q_MSG dev_msg_s[DEV_QUEUE_SIZE];
@@ -60,7 +49,6 @@ uint8 DEV_msg_req(uint8 type)
 	dev_msg_s[dev_in_s].type = type;
 	err = OSQPost(dev_Q_s,&dev_msg_s[dev_in_s]); 
 	dev_in_s = (dev_in_s + 1) % DEV_QUEUE_SIZE;
-	
 	return (err == OS_NO_ERR);
 	
 }
@@ -70,7 +58,7 @@ uint8 DEV_msg_rpt(uint8 type)
 {
 	uint8 err;
 	dev_msg_r[dev_in_r].type = type;
-	err = OSQPost(dev_Q_r,&dev_msg_s[dev_in_r]); 
+	err = OSQPost(dev_Q_r,&dev_msg_r[dev_in_r]); 
 	dev_in_r = (dev_in_r + 1) % DEV_QUEUE_SIZE;
 	return (err == OS_NO_ERR);
 }
@@ -78,14 +66,16 @@ uint8 DEV_msg_rpt(uint8 type)
 
 /*********************************************************************************************************			
 ** Function name:       DEV_billEnableReq
-** Descriptions:        发送纸币器使能命令
-** output parameters:       none
+** Descriptions:        发送使能命令
+** output parameters:       obj:1纸币器  2硬币器  opt:1使能 0禁能
 ** Returned value:          none
 *********************************************************************************************************/
 uint8 DEV_enableReq(uint8 obj,uint8 opt)
 {
+	dev_msg_s[dev_in_s].obj = obj;
 	dev_msg_s[dev_in_s].opt = opt;
-	return DEV_msg_req(DEV_BILL_ENABLE);
+	
+	return DEV_msg_req(DEV_ENABLE);
 	
 }
 
@@ -96,46 +86,136 @@ uint8 DEV_enableReq(uint8 obj,uint8 opt)
 ** output parameters:       none
 ** Returned value:          none
 *********************************************************************************************************/
-uint8 DEV_billEnableRpt(Q_MSG *msg)
+uint8 DEV_enableRpt(Q_MSG *msg)
 {
-	uint8 err;
+	uint8 err = 0;
 	if(msg == NULL){return 0;}
-	MDB_billEnable(msg->opt);
-	//err = DEV_msg_rpt(DEV_BILL_ENABLE);
+	if(msg->obj & OBJ_BILL){
+		MDB_billEnable(msg->opt);
+	}
+	
+	if(msg->obj & OBJ_COIN){
+		MDB_coinEnable(msg->opt);
+	}
+	
 	return err;
 	
 }
 
-/*********************************************************************************************************			
-** Function name:       DEV_coinEnableReq
-** Descriptions:        发送硬币器使能命令
-** output parameters:       none
-** Returned value:          none
-*********************************************************************************************************/
-uint8 DEV_coinEnableReq(uint8 opt)
+
+Q_MSG *DEV_getReqMsg(void)
 {
-	dev_msg_s[dev_in_s].opt = opt;
-	return DEV_msg_req(DEV_COIN_ENABLE);
+	return &dev_msg_s[dev_in_s];
 	
 }
 
-
-/*********************************************************************************************************			
-** Function name:       DEV_coinEnableRpt
-** Descriptions:        发送硬币器使能命令回应结果
-** output parameters:       none
-** Returned value:          none
-*********************************************************************************************************/
-uint8 DEV_coinEnableRpt(Q_MSG *msg)
+uint8 DEV_payoutReq(uint32 billAmount,uint32 coinAmount)
 {
-	uint8 err;
+	dev_msg_s[dev_in_s].billAmount = billAmount;
+	dev_msg_s[dev_in_s].coinAmount = coinAmount;
+
+	return DEV_msg_req(DEV_PAYOUT);
+}
+
+uint8 DEV_payoutRpt(Q_MSG *msg)
+{
+	uint8 err = 0,i,j,n;
+	uint32 amount = 0,changed = 0,remain = 0;
+	uint16 changedCount;
+	uint16 hp[HP_SUM] = {0};
+	
+	ST_CHANGE_RATO *ratio = NULL;
 	if(msg == NULL){return 0;}
-	MDB_coinEnable(msg->opt);
-	//err = DEV_msg_rpt(DEV_BILL_ENABLE);
-	return err;
 	
+	print_dev("DEV_payoutRpt:b_ratio=%d,c_ratio=%d\r\n",msg->billRatioIndex,msg->coinRatioIndex);
+	
+	MDB_billEnable(0);
+	MDB_coinEnable(0);
+	
+	changed = 0;
+	memset(hp,0,sizeof(uint16) * HP_SUM);
+	
+	if(msg->billRatioIndex > 0){ //有纸币兑币比例
+		ratio = &stMdb.billRato[msg->billRatioIndex - 1];
+		if(ratio->amount > 0){
+			n = msg->billAmount / ratio->amount;
+			for(i = 0;i < 8;i++){
+				changedCount = HP_payout_by_level(i,ratio->num[i] * n,hp);
+				changed += changedCount * ratio->ch[i];
+				
+			}
+		}
+		
+		
+	}
+	
+	if(msg->coinRatioIndex > 0){
+		ratio = &stMdb.coinRato[msg->coinRatioIndex - 1];
+		if(ratio->amount > 0){
+			n = msg->coinAmount / ratio->amount;
+			for(i = 0;i < 8;i++){
+				changedCount = HP_payout_by_level(i,ratio->num[i] * n,hp);
+				changed += changedCount * ratio->ch[i];
+			}
+		}
+	}
+	
+	//兑零比例找完  需要再次查看 是否还需要找零
+	amount = msg->billAmount + msg->coinAmount;
+	if(amount >  changed){
+		changed += HP_payout(amount - changed,hp);
+		
+	}
+	
+	print_dev("DEV_payoutRpt:amount=%d,changed=%d\r\n",amount,changed);
+	remain = MDB_billCost(amount);
+	print_dev("DEV_payoutRpt:remain=%d\r\n",remain);
+	remain = MDB_coinCost(remain);
+	
+	print_dev("DEV_payoutRpt:remain=%d\r\n",remain);
+	
+	dev_msg_r[dev_in_r].billAmount = msg->billAmount;
+	dev_msg_r[dev_in_r].coinAmount = msg->coinAmount;
+	dev_msg_r[dev_in_r].coinChanged = changed;
+	print_dev("\r\n");
+	for(i = 0;i < HP_SUM;i++){
+		print_dev("hp[%d] = %d\r\n",i,hp[i]);
+		dev_msg_r[dev_in_r].hp[i] = hp[i];
+	}
+	print_dev("\r\n");
+	if(amount >= changed){
+		dev_msg_r[dev_in_r].iou = amount - changed;
+	}
+	else{
+		dev_msg_r[dev_in_r].iou = 0;
+	}
+	
+
+	return DEV_msg_rpt(DEV_PAYOUT);
 }
 
+
+
+
+uint8 DEV_hpPayoutReq(uint8 no,uint16 nums)
+{
+	dev_msg_s[dev_in_s].hp_no = no;
+	dev_msg_s[dev_in_s].hp_nums = nums;
+	return DEV_msg_req(DEV_HP_PAYOUT);
+}
+
+
+uint8 DEV_hpPayoutRpt(Q_MSG *msg)
+{
+	uint16 changed = 0;
+	changed = HP_payout_by_no(msg->hp_no,msg->hp_nums);
+	
+	dev_msg_r[dev_in_r].coinChanged = changed;
+	
+	
+	return DEV_msg_rpt(DEV_HP_PAYOUT);
+	
+}
 
 
 
@@ -143,14 +223,18 @@ static void DEV_reqPoll(void)
 {
 	uint8 i,err;
 	Q_MSG *msg;
-	msg = (Q_MSG *)OSQPend(dev_Q_s,10,&err);
+	msg = (Q_MSG *)OSQPend(dev_Q_s,5,&err);
 	if(err == OS_NO_ERR){ //有请求
+		print_dev("DEV_reqPoll:type=%d\r\n",msg->type);
 		switch(msg->type){
-			case DEV_BILL_ENABLE:
-				DEV_billEnableRpt(msg);
+			case DEV_ENABLE:
+				DEV_enableRpt(msg);
 				break;
-			case DEV_COIN_ENABLE:
-				DEV_coinEnableRpt(msg);
+			case DEV_PAYOUT:
+				DEV_payoutRpt(msg);
+				break;
+			case DEV_HP_PAYOUT:
+				DEV_hpPayoutRpt(msg);
 				break;
 			default:break;
 		}
@@ -158,24 +242,41 @@ static void DEV_reqPoll(void)
 }
 
 
-
-void DEV_payoutReady(uint32 billAmount,uint32 coinAmount)
+Q_MSG *DEV_rptPoll(void)
 {
-	g_payMoney = coinAmount + billAmount;
-	g_pay = DEV_PAY_READY;
-}
-
-uint8 DEV_isPayoutFinish(void)
-{
-	if(g_pay == DEV_PAY_FINISH){
-		g_pay = DEV_PAY_IDLE;
-		return 1;
+	uint8 err;
+	Q_MSG *msg = NULL;
+	msg = (Q_MSG *)OSQPend(dev_Q_r,2,&err);
+	if(err == OS_NO_ERR){
+		return msg;
 	}
 	else{
-		return 0;
+		return NULL;
 	}
-	
 }
+
+
+Q_MSG *DEV_msgRpt(uint8 type,uint32 timeout)
+{
+	uint8 err;
+	Q_MSG *msg = NULL;
+	Timer.dev_msg_rpt = timeout / 10 + 1;
+	while(Timer.dev_msg_rpt){
+		msg = (Q_MSG *)OSQPend(dev_Q_r,50,&err);
+		print_dev("DEV_msgRpt:err=%d,type=%d\r\n",err,type);
+		if(err == OS_NO_ERR && msg->type == type){
+			print_dev("DEV_msgRpt:type=%d\r\n",type);
+			return msg;
+		}
+	}
+	return NULL;
+}
+
+
+
+
+
+
 
 
 void MT_devInit(void)
@@ -219,12 +320,13 @@ void MT_devInit(void)
 		}
 		
 		for(i = 0; i < 8;i++){
+			print_dev("ratio[%d]\r\n",i);
 			for(j = 0;j < HP_SUM;j++){
-				stMdb.billRato[i].ch[j] = stHopperLevel[i].ch;
+				print_dev("ch[%d]=%d\r\n",j,stHopperLevel[j].ch);
+				stMdb.billRato[i].ch[j] = stHopperLevel[j].ch;
+				stMdb.coinRato[i].ch[j] = stHopperLevel[j].ch;
 			}
 		}
-
-		
 	}
 	msleep(100);
 
@@ -264,9 +366,14 @@ void task_dev(void *pdata)
 	pdata = pdata;
 	
 	DEV_registerOSQ();
-	MT_devInit();
+	LED_ctrl(1,0);
+	LED_ctrl(2,0);
+	LED_ctrl(3,0);
 	
+	MT_devInit();
 	msleep(500);
+	DEV_msg_rpt(DEV_INIT);
+	
 	while(1){
 		//print_dev("task_dev\r\n");
 		temp = MDB_getBillAcceptor();
@@ -282,13 +389,6 @@ void task_dev(void *pdata)
 		if(temp == COIN_DISPENSER_HOPPER){
 			HP_task();
 		}	
-		
-		if(g_pay == DEV_PAY_READY){
-			//g_changedMoney = MDB_bill_payout(g_payMoney);
-			g_changedMoney = MDB_coin_payout(g_payMoney);
-			g_pay = DEV_PAY_FINISH;
-		}
-		
 		
 		
 		DEV_reqPoll();

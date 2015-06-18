@@ -48,7 +48,7 @@ extern uint16_t HardWareErr;
 volatile uint16_t WaitCmdTimer;
 
 
-
+volatile static uint8 g_billRatio = 0,g_coinRatio = 0;
 
 
 
@@ -99,6 +99,7 @@ void SystemParaInit(void)
 	memset((void *)&stCoin,0,sizeof(stCoin));
 	memset((void *)&stMdb,0,sizeof(stMdb));
 	FM_readFromFlash();
+	FM_readLogFromFlash();
 	MDB_setBillAcceptor(BILL_ACCEPTOR_MDB);
 	MDB_setBillDispenser(BILL_DISPENSER_MDB);
 	MDB_setCoinAcceptor(COIN_ACCEPTOR_PPLUSE);
@@ -121,27 +122,21 @@ static uint8 MT_checkMenu(const uint8 state)
 
 	g_enterMenu = MN_isMenuEntered();
 	if(g_enterMenu == 1){
-		DEV_coinEnableReq(0);
-		DEV_billEnableReq(0);
+		DEV_enableReq(OBJ_ALL,0);
 		MN_userMenu();
 		
 	}
 	else if(g_enterMenu == 2){
-		MDB_coinEnable(0);
-		MDB_billEnable(0);
+		DEV_enableReq(OBJ_ALL,0);
 		MN_adminMenu();
 	}
 	
 	if(g_enterMenu){
 		if(state == TRADE_FAULT){//退出维护选择显示页面
-			//DispErrPage();
-			MDB_coinEnable(0);
-			MDB_billEnable(0);
+			DEV_enableReq(OBJ_ALL,0);
 		}	
 		else{
-			//DispFreePage(hopperIsEmpty());
-			MDB_coinEnable(1);
-			MDB_billEnable(1);
+			DEV_enableReq(OBJ_ALL,1);
 		}	
 		g_enterMenu = 0;//跳出维护 清标志
 		
@@ -159,14 +154,46 @@ static uint8 MT_checkMenu(const uint8 state)
 ** output parameters:   无
 ** Returned value:      无
 *********************************************************************************************************/
-void MT_checkDev(void)
+uint8 MT_checkDev(void)
 {
-	uint8 s;
-	s = MDB_getBillStatus();
-	s = MDB_getBillErrNo();
-	if(s > 0){ //纸币器有故障
-		
+	uint16 errNo = 0;
+	uint8 i,hpIsEmpty,hpIsFault,hpUsedNum;
+	
+	errNo = MDB_getBillErrNo();
+	if(errNo > 0){ //纸币器有故障
+		LED_showString("BLEE");
+		return 1;
 	}
+	
+	//检查hopper 全故障 或者 全缺币
+	hpIsEmpty = 0;
+	hpIsFault = 0;
+	hpUsedNum = 0;
+	for(i = 0;i < HP_SUM;i++){
+		if(stHopper[i].ch == 0){
+			continue;
+		}
+		hpUsedNum++;
+		if(stHopper[i].state == HP_STATE_QUEBI){
+			hpIsEmpty++;
+		}
+		else if(stHopper[i].state == HP_STATE_FAULT || stHopper[i].state == HP_STATE_COM){
+			hpIsFault++;
+		}
+
+	}
+	
+	if(hpIsFault >= hpUsedNum){
+		LED_showString("HPEE");
+		return 1;
+	}
+	
+	if(hpIsEmpty >= hpUsedNum){
+		LED_showString("HP00");
+		return 1;
+	}
+
+	return 0;
 }
 
 
@@ -180,10 +207,37 @@ void MT_checkDev(void)
 ** output parameters:   无
 ** Returned value:      无
 *********************************************************************************************************/
-uint8 MT_checkPayout(uint32 amount)
+uint8 MT_checkPayout(uint32 billAmount,uint32 coinAmount)
 {
-	
-	return 0;
+	uint8 i;
+	#if 0
+	for(i = 0;i < HP_SUM;i++){
+		if(stHopperLevel[i].ch == 0){
+			if(i != 0){
+				if(coinAmount <= stHopperLevel[i - 1].ch){ //硬币不符兑零
+					
+					return 0;
+				}
+			}
+		}
+	}
+	#endif
+	g_billRatio = 0;
+	g_coinRatio = 0;
+	for(i = 0; i < 8;i++){
+		if(billAmount == stMdb.billRato[i].amount){
+			g_billRatio = i + 1;
+			break;
+		}
+	}
+	for(i = 0; i < 8;i++){
+		if(coinAmount == stMdb.coinRato[i].amount){
+			g_coinRatio = i + 1;
+			break;
+		}
+	}
+
+	return 1;
 }
 
 
@@ -228,25 +282,23 @@ void setPayKey(const unsigned char flag)
 }
 
 
-
-/*********************************************************************************************************
-** Function name:       hopperIsEmpty
-** Descriptions:        hopper缺币 
-** input parameters:    
-** output parameters:   无
-** Returned value:      1 缺币  0 正常
-*********************************************************************************************************/
-static uint8 hopperIsEmpty(void)
+static void MT_saveTradeLog(Q_MSG *msg)
 {
 	uint8 i;
+	stLog.billRecv += msg->billAmount;
+	stLog.coinRecv += msg->coinAmount;
+	stLog.iou += msg->iou;
+	stLog.coinChanged += msg->coinChanged;
+	print_main("LOG:bRecv=%d,cRecv=%d,iou=%d,changed=%d\r\n",
+		stLog.billRecv,stLog.coinRecv,stLog.iou,stLog.coinChanged);
+	
 	for(i = 0;i < HP_SUM;i++){
-		print_main("[%d].ch=%d s = %d\r\n",i,stHopper[i].ch,stHopper[i].state);
-		if(stHopper[i].ch > 0 && stHopper[i].state != HP_STATE_QUEBI){
-			return 0;
-		}
+		stLog.hpChanged[i] += msg->hp[i];
+		print_main("hpChanged[%d]= %d\r\n",i,stLog.hpChanged[i]);
 	}
-	return 1;
+	FM_writeLogToFlash();
 }
+
 
 
 /*********************************************************************************************************
@@ -258,13 +310,13 @@ static uint8 hopperIsEmpty(void)
 *********************************************************************************************************/
 void task_trade(void)
 {
-	uint8 err,billtype=0,hopperState = 0,hasBuy = 0,rcx;
-	uint32 iouMoney = 0;
 	uint8 state = 0;
 	static uint32 remainAmount = 0,curBillAmount = 0,curCoinAmount = 0;
-	
+	Q_MSG *msg;
 	state = TRADE_BEGIN;
 	disp_clear_screen();
+	DEV_msgRpt(DEV_INIT,500000);	
+	
 	//主流程
 	while(1){
 		switch(state){
@@ -272,10 +324,9 @@ void task_trade(void)
 				remainAmount = 0;
 				curBillAmount = 0;
 				curCoinAmount = 0;		
-				hasBuy = 0;
+				
 				Timer.usr_opt = 1000; //10s
-				MDB_coinEnable(1);
-				MDB_billEnable(1);
+				DEV_enableReq(OBJ_ALL,1);
 				state = TRADE_DISP;
 				break;
 			case TRADE_DISP://显示欢迎光临
@@ -283,36 +334,44 @@ void task_trade(void)
 				state = TRADE_BILLIN;
 				break;
 			case TRADE_BILLIN:
-				//接收纸币
-				curBillAmount = MDB_getBillRecvAmount();
-				//接收硬币
-				curCoinAmount = MDB_getCoinRecvAmount();
-				//总接收金额
-				remainAmount = curBillAmount + curCoinAmount;
+				curBillAmount = MDB_getBillRecvAmount();//接收纸币
+				curCoinAmount = MDB_getCoinRecvAmount();//接收硬币
+				remainAmount = curBillAmount + curCoinAmount;//总接收金额
+				LED_showAmount(remainAmount);
 				if(remainAmount > 0){ // 有金额进入找零环节
 					//显示金额
-					LED_showAmount(remainAmount);
-					if(MT_checkPayout(remainAmount) > 0){ //检查是否可找零
+					print_main("remainAmount1=%d\r\n",remainAmount);
+					if(MT_checkPayout(curBillAmount,curCoinAmount) > 0){ //检查是否可找零
 						state = TRADE_HPOUT;
 					}
 				}
 				else{ //空闲状态 
 					MT_checkMenu(state); //检测按键
-					MT_checkDev();	//检测设备状态
-					if(hopperIsEmpty()){
-						LED_showString("HP00");
-					}
-					else{
-						LED_showAmount(0);
+					if(MT_checkDev() > 0){	//检测设备状态
+						state = TRADE_FAULT;
+						DEV_enableReq(OBJ_ALL,0);
 					}
 				}
 				
 				break;
 			case TRADE_HPOUT://找零
-				DEV_payoutReady(curBillAmount,curCoinAmount);//正在找零
-				while(!DEV_isPayoutFinish()){
-					msleep(100);	
+				msg = DEV_getReqMsg();
+				msg->billRatioIndex = g_billRatio;
+				msg->coinRatioIndex = g_coinRatio;
+				DEV_payoutReq(curBillAmount,curCoinAmount);//正在找零
+			
+				msg = DEV_msgRpt(DEV_PAYOUT,900000); //等待找零结果
+				MT_saveTradeLog(msg);
+				
+				state = TRADE_BEGIN;
+				break;
+			
+			case TRADE_FAULT:
+				MT_checkMenu(state); 
+				if(MT_checkDev() == 0){
+					state = TRADE_BEGIN;
 				}
+				
 				break;
 			default:
 				break;

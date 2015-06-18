@@ -22,6 +22,311 @@ uint8 MN_getKey(void)
 }
 
 
+/*********************************************************************************************************
+** Function name:       MN_dispAmount
+** Descriptions:        
+** input parameters:    无
+** output parameters:   无
+** Returned value:      无
+*********************************************************************************************************/
+static void MN_dispAmount(uint32 data)
+{
+	uint8 key;
+	LED_showAmount(data);
+	while(1){
+		key = MN_getKey();
+		if(key == 'C')
+			return;
+		msleep(20);
+	}
+}
+
+
+/*********************************************************************************************************
+** Function name:       MN_dispAmount
+** Descriptions:        
+** input parameters:    无
+** output parameters:   无
+** Returned value:      无
+*********************************************************************************************************/
+static void MN_dispData(uint32 data)
+{
+	uint8 key;
+	LED_showData(data);
+	while(1){
+		key = MN_getKey();
+		if(key == 'C')
+			return;
+		msleep(20);
+	}
+}
+
+
+static void MN_hopperOutCheck(uint8 type)
+{
+	uint8 key,topFlush = 1,topReturn = 0;
+	uint8 no;
+	while(1){
+		if(topFlush == 1){
+			topFlush = 0;
+			LED_show("U%02d.0",type);
+		}
+		key = MN_getKey();
+		switch(key){
+			case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8':
+				no = key - '0';
+				LED_show("U%02d.%d",type,no);
+				break;
+			case 'C':
+				if(no > 0){
+					no = 0;
+				}
+				else{
+					topReturn = 1;
+				}
+				topFlush = 1;
+				break;
+			case 'E':
+				MN_dispData(stLog.hpChanged[no - 1]);
+				no = 0;
+				topFlush = 1;
+				break;
+			default:break;
+		}
+		
+		
+		if(topReturn == 1){
+			return;
+		}
+			
+		msleep(20);
+	}
+}
+
+
+static void MN_billTest(void)
+{
+	uint8 key;
+	uint32 amount = 0,temp32 = 0;
+	DEV_enableReq(OBJ_BILL,1);
+	
+	LED_showAmount(amount);
+	while(1){
+		key = MN_getKey();
+		if(key == 'C'){
+			temp32 = MDB_getBillRecvAmount();
+			MDB_billCost(temp32);		
+			break;
+		}
+		temp32 = MDB_getBillRecvAmount();
+		if(amount != temp32){
+			amount = temp32;
+			LED_showAmount(amount);
+		}
+		msleep(200);
+	}
+	DEV_enableReq(OBJ_BILL,0);	
+	msleep(1000);
+}
+
+
+
+//硬币器测试
+static void MN_coinTest(void)
+{
+	uint8 key;
+	uint32 amount = 0,temp32 = 0;
+	DEV_enableReq(OBJ_COIN,1);
+	
+	LED_showAmount(amount);
+	while(1){
+		key = MN_getKey();
+		if(key == 'C'){	 
+			temp32 = MDB_getCoinRecvAmount();
+			MDB_coinCost(temp32);		
+			break;
+		}
+		temp32 = MDB_getCoinRecvAmount();
+		msleep(200);
+		if(amount != temp32){
+			amount = temp32;
+			LED_showAmount(amount);
+		}
+	}
+	DEV_enableReq(OBJ_COIN,0);	
+	msleep(1000);
+}
+
+
+
+/*********************************************************************************************************
+** Function name:       MN_hopperTest
+** Descriptions:        Hp测试
+** input parameters:    无
+** output parameters:   无
+** Returned value:      无
+*********************************************************************************************************/
+static void MN_hopperTest(uint8 menu,uint8 flag)
+{
+	uint8 key,returnFlag = 0,enterSubMenu = 0,hopperNo = 0,topFlush = 1;
+	uint8 state=0;
+	uint32 changed;
+	Q_MSG *msg;
+	while(1){
+		if(topFlush == 1){
+			topFlush = 0;
+			LED_show("U%02d.%d",menu,hopperNo);
+		}
+		key = MN_getKey();
+		switch(key){
+			case '1':case '2':case '3':
+				hopperNo = key - '0';
+				topFlush = 1;
+				break;
+			case 'C':
+				if(hopperNo)
+					hopperNo = 0;
+				else
+					returnFlag = 1;
+				topFlush = 1;
+				break;
+			case 'E':
+				if(hopperNo)
+					enterSubMenu = 1;
+				break;
+			default:
+				break;
+		}
+		if(enterSubMenu){
+			// HP01
+			LED_show("HP%d0",hopperNo);
+			if(flag == 1){
+				DEV_hpPayoutReq(hopperNo,5);
+				msg = DEV_msgRpt(DEV_HP_PAYOUT,50000);
+				if(msg != NULL){
+					LED_showData(msg->coinChanged);
+					msleep(1000);
+					LED_showString("####");
+					msleep(1000);
+				}
+			}
+			else{
+				changed = 0;
+				while(1){
+					DEV_hpPayoutReq(hopperNo,10);
+					msg = DEV_msgRpt(DEV_HP_PAYOUT,50000);
+					if(msg == NULL){
+						break;
+					}
+					else{
+						changed += msg->coinChanged;
+						LED_showData(changed);
+						if(msg->coinChanged < 10){
+							break;
+						}
+						
+					}
+					key = MN_getKey();
+					if(key == 'C'){
+					    break;			
+					}
+					
+				}
+			}
+
+			
+			
+			state = stHopper[hopperNo - 1].state;
+			if(state == HP_STATE_FAULT || state == HP_STATE_COM){
+				LED_show("HP%dE",hopperNo);
+			}	
+			else{
+				LED_show("HP%d0",hopperNo);
+			}
+				
+			msleep(1000);
+			hopperNo = 0;
+			enterSubMenu = 0;
+			topFlush = 1;
+		}
+		
+		if(returnFlag){
+			return;
+		}
+		msleep(20);
+	}
+}
+
+
+
+/*********************************************************************************************************
+** Function name:       MN_clearLog
+** Descriptions:         清除交易记录
+** input parameters:    无
+** output parameters:   无
+** Returned value:      无
+*********************************************************************************************************/
+static void MN_clearLog(void)
+{
+	uint8 key,returnFlag = 0,enterSub = 0,index =0,topFlush = 1;
+	char num[4] ;
+	memset(num,'-',sizeof(num));
+	while(1){
+		if(topFlush == 1){
+			topFlush = 0;
+			LED_show("%c%c%c%c",num[0],num[1],num[2],num[3]);
+		}
+		key = MN_getKey();
+		switch(key){
+			case '1':case '2':case '3':case '4'://密码 1234
+				num[index++] = key;
+				topFlush = 1;
+				break;
+			case 'C':
+				if(index)
+					index = 0;
+				else
+					returnFlag = 1;
+				break;
+			case 'E':
+				enterSub = 1;
+				index= 0;
+				break;
+		}
+		
+		if(returnFlag)
+			return;
+		
+		msleep(50);
+		if(enterSub){
+			if(num[0] == '1' && num[1] == '2' && num[2] == '3' && num[3] == '4'){
+				LED_showString("CLEA");
+				FM_clearLog();
+				msleep(1000);
+				LED_showString("####");
+				msleep(1000);
+				LED_showString("0000");
+				msleep(1000);
+				enterSub = 0;
+				return;
+				
+			}
+			else{
+				LED_showString("####");
+				msleep(1000);
+				memset(num,'-',sizeof(num));
+				topFlush = 1;
+				enterSub = 0;
+			}
+		}
+
+		
+		
+	}
+}
+
+
+
 
 /*********************************************************************************************************
 ** Function name:       UserMenu
@@ -32,26 +337,122 @@ uint8 MN_getKey(void)
 *********************************************************************************************************/
 uint8 MN_userMenu(void)
 {	
-	uint8 key,entered = 1;
+	uint8_t key,subMenu = 0,returnFlag = 0,enterSubMenu = 0,topFlush = 1;
 	print_menu("MN_userMenu\r\n");
-	LED_showString("F00.0");
 	
-	while(entered){
+	
+	while(1){
+		if(topFlush == 1){
+			topFlush = 0;
+			LED_showString("U00.0");
+		}
 		key = MN_getKey();
 		switch(key){
-			case '1': //查询hopper斗出币数
+			case '1': case '2': case '3': case '4': case '5':case '6':case '7':case '8':case '9':case '0':
+				subMenu = subMenu * 10 + (key - '0');
+				subMenu = (subMenu > 99) ? 00 : subMenu;
+				LED_show("U%02d.0",subMenu);
 				break;
-			case '2': //纸币器收币金额
+			case 'E':
+				if(subMenu){
+					enterSubMenu = 1;	
+					LED_showString("####");
+					msleep(500);				
+				}	
 				break;
 			case 'C':
-				entered = 0;
+				if(subMenu)
+					subMenu = 0;
+				else
+					returnFlag = 1;
+				topFlush = 1;
 				break;
 			default:break;
 		
 		}
-	
+		
+		if(returnFlag){
+			return 0;
+		}
+		msleep(20);
+		
+		if(enterSubMenu == 1){
+			switch(subMenu){
+//==============交易记录1- 19========================================
+				case 1://纸币器收币
+					MN_dispAmount(stLog.billRecv);
+					break;
+				case 2://硬币器收币
+					MN_dispAmount(stLog.coinRecv);
+					break;
+				case 3://找零总金额
+					MN_dispAmount(stLog.coinChanged);	
+					break;
+				case 4://成功交易次数
+					
+					break;
+					
+				case 5://欠费金额
+					MN_dispAmount(stLog.iou);
+					break;		
+
+				case 6://reserved
+					
+					break;	
+
+				case 7://hopper1出币数
+					MN_hopperOutCheck(7);
+					
+					break;
+				case 8://hopper2出币数
+					//MN_dispData(stLog.hpChanged[1]);
+					break;
+				case 9://hopper3出币数
+					//MN_dispData(stLog.hpChanged[2]);
+					break;
+				
+//================================================================
+
+//==============设备管理20 -39========================================
+				case 20://测试纸币器收币
+					MN_billTest();
+					break;
+				case 21://测试硬币器收币
+					MN_coinTest();
+					break;
+				case 22://测试找零总金额	
+					MN_hopperTest(22,1);	
+					break;
+				case 23://清零hopper斗			
+					MN_hopperTest(23,0);	
+					break;	
+//================================================================
+				
+
+//==============货道管理40 -59========================================
+
+
+
+
+					
+//================================================================
+
+
+
+				case 99:// 清除交易记录
+					MN_clearLog();					
+					break;
+					
+					
+				default:
+					break;
+			}
+			enterSubMenu = 0;
+			subMenu = 0;
+			topFlush = 1;
+		}
 	}
-	return 0;	
+	
 }
 
 
@@ -71,7 +472,8 @@ uint8 MN_getInputValue(uint32 *ch,uint8 in)
 	while(1){
 		if(toFlush == 1){
 			toFlush = 0;
-			LED_showAmount(temp);
+			
+			LED_showAmount(MDB_valueToCents(temp));
 		}
 		key = MN_getKey();
 		switch(key){
@@ -87,7 +489,7 @@ uint8 MN_getInputValue(uint32 *ch,uint8 in)
 					ch[in] = MDB_valueToCents(temp);
 					LED_showString("####");
 					msleep(500);	
-					LED_showAmount(temp);	
+					LED_showAmount(MDB_valueToCents(temp));	
 					msleep(500);
 					returnFlag = 1;	
 					isChanged = 1;
@@ -204,19 +606,17 @@ uint8 MN_setChannel(uint8 type)
 uint8 MN_setRato(ST_CHANGE_RATO *rato)
 {
 	uint8 key,returnFlag = 0,toFlush = 1,isEdit = 0,isChanged = 0;
-	uint32 temp = 0,value,temp32,point,v1;
-	uint8 buf[20] = {0},buf1[20] = {0},index = 0,num,num1,v,i,j,cursor = 0,dataFlush = 1;
+	uint32 temp = 0,temp32,point;
+	uint8 buf[20] = {0},buf1[20] = {0},index = 0,num,num1,v,i,cursor = 0,dataFlush = 1;
 	ST_CHANGE_RATO ratio;
 	
 	//拷贝 比例数据
 	for(i = 0;i < 8;i++){
+		print_menu("rato[%d] ch=%d num=%d\r\n",i,rato->ch[i],rato->num[i]);
 		ratio.ch[i] = rato->ch[i];
 		ratio.num[i] = rato->num[i];
 	}
 	ratio.amount = rato->amount;
-
-	
-	
 	while(1){
 		if(toFlush == 1){
 			toFlush = 0;
@@ -226,8 +626,9 @@ uint8 MN_setRato(ST_CHANGE_RATO *rato)
 					msleep(500);
 					dataFlush = 0;
 					temp = MDB_valueFromCents(ratio.amount);
-				}
-				LED_showAmount(temp);
+					
+				}				
+				LED_showAmount(MDB_valueToCents(temp));
 			}
 			else{
 				if(dataFlush == 1){
@@ -316,10 +717,7 @@ uint8 MN_setRato(ST_CHANGE_RATO *rato)
 				
 				led_display(buf[cursor],buf[cursor + 1],
 							buf[cursor + 2],buf[cursor + 3]);
-			
 			}
-			
-			
 		}
 		key = MN_getKey();
 		switch(key){
@@ -418,21 +816,20 @@ uint8 MN_setRato(ST_CHANGE_RATO *rato)
 ** output parameters:   无
 ** Returned value:      1 配置有更改  0 配置无更改
 *********************************************************************************************************/
-uint8 MN_setBillRato(ST_CHANGE_RATO *rato)
+uint8 MN_setBillRato(uint8 type,ST_CHANGE_RATO *rato)
 {
-	uint8 key,i,index = 0,topReturnFlag = 0,isEdit = 0;
+	uint8 key,index = 0,topReturnFlag = 0;
 	uint8 topFlush = 1;
-	uint32 ch[16] = {0};
 	uint16 isChanged = 0;
 	while(1){
 		if(topFlush == 1){
 			topFlush = 0;
-			LED_showString("A05.0");
+			LED_show("A%02d.0",type);
 		}
 		key = MN_getKey();
 		switch(key){
 			case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8':
-				LED_show("A05.%c",key);
+				LED_show("A%02d.%c",type,key);
 				index = key - '0';
 				break;
 			case 'C':
@@ -446,9 +843,7 @@ uint8 MN_setBillRato(ST_CHANGE_RATO *rato)
 				break;
 			case 'E'://进入下一级菜单
 				if(index > 0){
-					
 					if(MN_setRato(&rato[index - 1]) > 0){ //有更改需要保存flash
-						
 						FM_writeToFlash();
 						isChanged++;
 					}
@@ -552,7 +947,7 @@ uint8 MN_setPointValue(uint8 *p)
 *********************************************************************************************************/
 uint8 MN_adminMenu(void)
 {
-	uint8 key,toFlush = 1,topReturnFlag = 0;
+	uint8 key,toFlush = 1,topReturnFlag = 0,menuKey = 0,enterSubMenu = 0;
 	uint16 isChanged = 0;
 	while(1){
 		if(toFlush == 1){
@@ -561,45 +956,67 @@ uint8 MN_adminMenu(void)
 		}
 		key = MN_getKey();
 		switch(key){
-			case '1': //配置纸币器通道面值
-				LED_showString("A01.0");
-				isChanged += MN_setChannel(1);
-				toFlush = 1;
+			case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8':case '9':case '0':
+				menuKey = menuKey * 10 + key - '0';
+				menuKey = (menuKey > 99) ? 00 : menuKey;
+				LED_show("A%02d.0",menuKey);
 				break;
-			case '2': //配置硬币器通道面值
-				LED_showString("A02.0");
-				isChanged += MN_setChannel(2);
-				toFlush = 1;
-				break;
-			case '3': //配置hopper通道面值
-				LED_showString("A03.0");
-				isChanged += MN_setChannel(3);
-				toFlush = 1;
-				break;
-			case '4': //配置小数点
-				LED_showString("A04.0");
-				msleep(500);
-				LED_showString("####");
-				msleep(500);
-				isChanged += MN_setPointValue(&stMdb.pointValue);
-				toFlush = 1;
-				break;
-			case '5': //配置纸币兑零比例
-				LED_showString("A05.0");
-				isChanged += MN_setBillRato(stMdb.billRato);
-				toFlush = 1;
-				break;
-			case '6': //配置硬币兑零比例
-				LED_showString("A06.0");
-				isChanged += MN_setBillRato(stMdb.coinRato);
-				toFlush = 1;
+			
+			case 'E':
+				if(menuKey){
+					enterSubMenu = 1;	
+					LED_showString("####");
+					msleep(500);				
+				}	
 				break;
 			case 'C':
-				topReturnFlag = 1;
+				if(menuKey)
+					menuKey = 0;
+				else
+					topReturnFlag = 1;
+				toFlush = 1;
 				break;
+			
+			
 			default:break;
-		
 		}
+		
+		if(enterSubMenu){
+			key = menuKey;
+			enterSubMenu = 0;
+			menuKey = 0;
+			toFlush = 1;
+			
+			switch(key){
+				case 1: //配置纸币器通道面值
+					LED_showString("A01.0");
+					isChanged += MN_setChannel(1);
+					break;
+				case 2: //配置硬币器通道面值
+					LED_showString("A02.0");
+					isChanged += MN_setChannel(2);
+					break;
+				case 3: //配置hopper通道面值
+					LED_showString("A03.0");
+					isChanged += MN_setChannel(3);
+					break;
+				case 4: //配置小数点
+					isChanged += MN_setPointValue(&stMdb.pointValue);
+					break;
+				case 5: //配置纸币兑零比例
+					LED_showString("A05.0");
+					isChanged += MN_setBillRato(5,stMdb.billRato);
+					break;
+				case 6: //配置硬币兑零比例
+					LED_showString("A06.0");
+					isChanged += MN_setBillRato(6,stMdb.coinRato);
+					break;
+				
+				default:break;
+			}
+		}
+		
+		
 		if(topReturnFlag == 1){
 			return (isChanged > 0) ? 1 : 0;
 		}

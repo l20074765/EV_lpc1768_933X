@@ -2,9 +2,9 @@
 #include "../config.h"
 
 
-static unsigned char buf[512];
+static unsigned char buf[512] = {0};
 
-
+ST_LOG stLog;
 /*********************************************************************************************************
 ** Function name:       saveFlash
 ** Descriptions:        保存数据到flash中
@@ -73,6 +73,8 @@ unsigned char FM_readFromFlash(void)
 			ratio->num[j] = buf[index++];
 		}
 	}
+	
+	Trace("ReadFlash:size=%d\r\n",index);
 	return 1;
 }
 
@@ -120,8 +122,85 @@ unsigned char FM_writeToFlash(void)
 }
 
 
+unsigned char FM_readLogFromFlash(void)
+{
+	unsigned short in = 0,i;
+
+	memset(buf,0,sizeof(buf));
+	readFlash(512,buf,256);
+	if(buf[in++] != 0xE5){
+		Trace("buf[in++] != 0xE5\r\n");
+		return 0;
+	}
+	stLog.billRecv = INTEG32(buf[in + 0],buf[in + 1],buf[in + 2],buf[in + 3]);
+	in += 4;
+	stLog.coinRecv = INTEG32(buf[in + 0],buf[in + 1],buf[in + 2],buf[in + 3]);
+	in += 4;
+	stLog.coinChanged = INTEG32(buf[in + 0],buf[in + 1],buf[in + 2],buf[in + 3]);
+	in += 4;
+	stLog.iou = INTEG32(buf[in + 0],buf[in + 1],buf[in + 2],buf[in + 3]);
+	in += 4;
+	
+	Trace("FLASH:bRecv=%d,cRecv=%d,iou=%d,changed=%d\r\n",
+		stLog.billRecv,stLog.coinRecv,stLog.iou,stLog.coinChanged);
+	
+	
+	for(i = 0;i < HP_SUM;i++){
+		stLog.hpChanged[i] = INTEG32(buf[in + 0],buf[in + 1],buf[in + 2],buf[in + 3]);
+		in += 4;
+		Trace("Flash-hpChanged[%d]= %d\r\n",i,stLog.hpChanged[i]);
+	}
+	
+	Trace("readLog:size=%d\r\n",in);
+	return 1;
+}
 
 
+unsigned char FM_writeLogToFlash(void)
+{
+	unsigned short in = 0,i;
+	
+	buf[in++] = 0xE5; // 校验码
+	buf[in++] = H0UINT32(stLog.billRecv);
+	buf[in++] = H1UINT32(stLog.billRecv);
+	buf[in++] = L0UINT32(stLog.billRecv);
+	buf[in++] = L1UINT32(stLog.billRecv);
+	
+	buf[in++] = H0UINT32(stLog.coinRecv);
+	buf[in++] = H1UINT32(stLog.coinRecv);
+	buf[in++] = L0UINT32(stLog.coinRecv);
+	buf[in++] = L1UINT32(stLog.coinRecv);
+	
+	buf[in++] = H0UINT32(stLog.coinChanged);
+	buf[in++] = H1UINT32(stLog.coinChanged);
+	buf[in++] = L0UINT32(stLog.coinChanged);
+	buf[in++] = L1UINT32(stLog.coinChanged);
+	
+	
+	buf[in++] = H0UINT32(stLog.iou);
+	buf[in++] = H1UINT32(stLog.iou);
+	buf[in++] = L0UINT32(stLog.iou);
+	buf[in++] = L1UINT32(stLog.iou);
+	
+	for(i = 0;i < HP_SUM;i++){
+		buf[in++] = H0UINT32(stLog.hpChanged[i]);
+		buf[in++] = H1UINT32(stLog.hpChanged[i]);
+		buf[in++] = L0UINT32(stLog.hpChanged[i]);
+		buf[in++] = L1UINT32(stLog.hpChanged[i]);
+	}
+	
+	
+	saveFlash(512,buf,in);
+	return 1;
+}
+
+
+unsigned char FM_clearLog(void)
+{
+	memset(&stLog,0,sizeof(stLog));
+	FM_writeLogToFlash();
+	return 1;
+}
 
 
 

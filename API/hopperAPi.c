@@ -114,7 +114,7 @@ uint8 HP_send_check(ST_HOPPER *hopper)
 	if(res == 1){
 		if(recvbuf[1] == 0x08 && hopper->addr == recvbuf[4]) {
 			s = recvbuf[3];
-			print_hopper("HP_state=%x\r\n",s);
+			print_hopper("HP[%d]=%x\r\n",hopper->addr + 1,s);
 			
 			if(s & (0x01U << 1)){ //hopper忙
 				return 3;
@@ -265,38 +265,73 @@ uint8 HP_payout_by_addr(ST_HOPPER *hopper,uint16 num)
 
 
 /*********************************************************************************************************
+** Function name:     	HP_payout_by_addr
+** Descriptions:	    hopper?????
+** input parameters:    num ??????
+** output parameters:   ?
+** Returned value:      ?
+*********************************************************************************************************/
+uint16 HP_payout_by_no(uint8 addr,uint16 num)
+{
+	uint8 res;
+	ST_HOPPER *hopper;
+	if(addr <= 0 || addr > HP_SUM || num == 0){
+		return 0;
+	}
+	
+	hopper = &stHopper[addr - 1];
+	res = HP_send_output(hopper,num);
+	if(res != 1){
+		return 0;
+	}
+	
+	msleep(1000); //??1s
+	Timer.hopper_payout_timeout = 5000 + num * 250;
+	while(Timer.hopper_payout_timeout){
+		res = HP_send_check(hopper);
+		if(res == 1){ //????
+			return hopper->lastCount;
+		}
+		msleep(100);
+	}
+	return 0;
+	
+}
+
+
+
+/*********************************************************************************************************
 ** Function name:     	HP_payout_by_level
 ** Descriptions:	    hopper设备兑零操作函数
-** input parameters:    changeCount——需要兑零的数量
+** input parameters:    
 ** output parameters:   remainCount——兑零失败后剩余的数量
 						levelNo :选择哪个级别斗 找零
-** Returned value:      1：兑币成功；0：失败
+** Returned value:      changeCount——需要兑零的数量
 *********************************************************************************************************/
-uint8  HP_payout_by_level(uint8 l,uint16 payCount,uint16 *changedCount)
+uint16  HP_payout_by_level(uint8 l,uint16 payCount,uint16 *hp)
 {
 	uint8 i,cycleFlag = 0,res;
 	uint16 payCountTemp = 0;
-	
+	uint16 changedCount = 0;
 	ST_HOPPER *hopper;
 	
-	*changedCount = 0;
 	if(payCount == 0){
-		*changedCount = 0;
-		return 1;
+		return 0;
 	}
 	
 	//断言 hopper斗号是否符合
 	if(l >= HP_SUM){
-		*changedCount = 0;
 		print_hopper("The level = %d > %d(max) \r\n",l,HP_SUM);
 		return 0;
 	}
 	
+	
 	if(stHopperLevel[l].num  == 0) { //没有可用的斗
 		print_hopper("The level = %d useableNum = is 0 \r\n",l);
-		*changedCount = 0;
 		return 0;
 	}
+	
+	
 	
 	//查询是否有循环斗
 	for(i = 0; i < stHopperLevel[l].num;i++){
@@ -311,11 +346,13 @@ uint8  HP_payout_by_level(uint8 l,uint16 payCount,uint16 *changedCount)
 		hopper = stHopperLevel[l].hopper[i];
 		res = HP_payout_by_addr(hopper,payCount);
 		if(res == 1){
-			*changedCount  += payCount;
-			return 1;
+			changedCount  += payCount;
+			hp[hopper->addr] += hopper->lastCount;
+			return changedCount;
 		}
 		else{
-			*changedCount += hopper->lastCount;	//循环斗找零失败 再找其他斗	
+			hp[hopper->addr] += hopper->lastCount;
+			changedCount += hopper->lastCount;	//循环斗找零失败 再找其他斗	
 		}
 	}
 	
@@ -325,23 +362,25 @@ uint8  HP_payout_by_level(uint8 l,uint16 payCount,uint16 *changedCount)
 		hopper = stHopperLevel[l].hopper[i];
 		if(hopper->lastPayFail >= HP_PAYFAIL_NUM)//检查设备上次找零失败
 			continue;
-		payCountTemp = payCount - *changedCount;
+		payCountTemp = payCount - changedCount;
 		res = HP_payout_by_addr(hopper,payCountTemp);
 		print_hopper("Select--level = %d addr= %d res =%d\r\n",l,hopper->addr,res);
 		if(res == 1){
-			*changedCount  += payCountTemp;
+			changedCount  += payCountTemp;
+			hp[hopper->addr] += hopper->lastCount;
 			hopper->lastPayFail =  0;//故障清除
-			return 1;
+			return changedCount;
 		}
 		else{
-			*changedCount += hopper->lastCount;
+			hp[hopper->addr] += hopper->lastCount;
+			changedCount += hopper->lastCount;
 			print_hopper("PayCount = %d,hopper[%d]->lastCount =%d,changedCount =%d\r\n",
-					payCount,i,hopper->lastCount,*changedCount);
+					payCount,i,hopper->lastCount,changedCount);
 			//到此表示该斗 已经无法找币 置特殊故障并标记		
 			hopper->lastPayFail++;//故障+1
 		}				
 	}
-	return 0;
+	return changedCount;
 }
 
 
@@ -353,7 +392,7 @@ uint8  HP_payout_by_level(uint8 l,uint16 payCount,uint16 *changedCount)
 ** output parameters:   
 ** Returned value:      1：兑币成功；0：失败
 *********************************************************************************************************/
-uint32 HP_payout(uint32 payAmount)
+uint32 HP_payout(uint32 payAmount,uint16 *hp)
 {
 	uint8 i,res;
 	uint16 changedCount = 0,payCount = 0;
@@ -365,7 +404,7 @@ uint32 HP_payout(uint32 payAmount)
 		if(stHopperLevel[i].ch > 0){
 			payCount = payAmount / stHopperLevel[i].ch; //计算找币数量
 			print_hopper("Coin level[%d].payCount = %d \r\n",i,payCount);
-			res = HP_payout_by_level(i,payCount,&changedCount);
+			changedCount = HP_payout_by_level(i,payCount,hp);
 			changedAmount += changedCount * stHopperLevel[i].ch;
 			if(changedAmount <= payAmount)
 				payAmount = payAmount - changedAmount;
@@ -373,7 +412,7 @@ uint32 HP_payout(uint32 payAmount)
 				payAmount = 0;
 			//找零成功
 			if(res == 1 && payAmount == 0){
-					return changedAmount;		
+				return changedAmount;		
 			}
 		}
 	}

@@ -51,11 +51,13 @@ extern ST_HOPPER_LEVEL stHopperLevel[HP_SUM];
 
 
 void HP_task(void);
-uint32 HP_payout(uint32 payAmount);
+uint32 HP_payout(uint32 payAmount,uint16 *hp);
 void HP_init(void);
 uint8 HP_setCh(uint8 no,uint32 value);
 uint8 hopperChangerFailCheck(const uint32 remainAmount);
 uint8 HP_payout_by_addr(ST_HOPPER *hopper,uint16 num);
+uint16 HP_payout_by_no(uint8 addr,uint16 num);
+uint16  HP_payout_by_level(uint8 l,uint16 payCount,uint16 *hp);
 uint8 HP_send_check(ST_HOPPER *hopper);
 #endif
 

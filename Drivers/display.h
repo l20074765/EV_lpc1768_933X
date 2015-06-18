@@ -38,41 +38,6 @@
 #define LED_ERR_HUODAO				3
 
 
-#if 0
-#define LED_8_0  (0x00)
-#define LED_8_1  (0x01 << 0)
-#define LED_8_2  (0x01 << 1)
-#define LED_8_3  (0x01 << 2)
-#define LED_8_4  (0x01 << 3)
-#define LED_8_5  (0x01 << 4)
-#define LED_8_6  (0x01 << 5)
-#define LED_8_7  (0x01 << 6)
-#define LED_8_8  (0x01 << 7)
-
-#define  LED_SPECIAL_A     0
-#define  LED_SPECIAL_B     1
-#define  LED_SPECIAL_C     2
-#define  LED_SPECIAL_E     3
-#define  LED_SPECIAL_F     4
-#define  LED_SPECIAL_H     5
-#define  LED_SPECIAL_I     6
-#define  LED_SPECIAL_L     7
-#define  LED_SPECIAL_P     8
-#define  LED_SPECIAL_S     9
-#define  LED_SPECIAL_U     10
-#define  LED_SPECIAL_O     11
-
-#define  LED_SPECIAL_OFF     19
-
-#define  LED_1	  0x01
-#define  LED_2	  0x02
-#define  LED_3	  0x04
-#define  LED_4	  0x08
-
-#endif
-
-
-
 
 extern const unsigned char ledTab[28];
 
@@ -156,7 +121,7 @@ void ledPaoMaShow(unsigned char type);
 void ledPaoMaShow1(unsigned char type);
 
 void led_dispaly_off(void);
-void led_dispaly_mima(unsigned char type,unsigned char *num);
+
 
 void led_err_display(unsigned char type);
 void led_display(unsigned char led1,unsigned char led2,unsigned char led3,unsigned char led4);

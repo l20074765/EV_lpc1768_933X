@@ -125,6 +125,9 @@ void TIMER0_IRQHandler (void)
 	if(paomaLedTimer)
 		paomaLedTimer--;
 	
+	LED_hopperCheck();
+	
+	
 	
 	OSIntExit();
 }
