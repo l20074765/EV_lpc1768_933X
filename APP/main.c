@@ -13,7 +13,6 @@
 ** Descriptions:        The original version        
 ********************************************************************************************************/
 #include "..\config.h"
-#include "Global.h"
 #include "Menu.h"
 #include "..\API\task_trade.h"
 

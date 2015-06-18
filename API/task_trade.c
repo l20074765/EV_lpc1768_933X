@@ -13,40 +13,18 @@
 /*********************************************************************************************************
   定义全局变量
 *********************************************************************************************************/
-#if 1
+
 #define TRADE_BEGIN						(0x01)				//
 #define TRADE_DISP						(0x02)				//显示信息
 #define TRADE_HPOUT						(0x03)				//找零
 #define TRADE_SAVETRADE					(0x04)				//保存交易记录
 #define TRADE_BILLIN					(0x05)				//检测是否有纸币或硬币进入
-#define TRADE_ISCANOUTGOODS				(0x06)				//检测是否可以出货
-#define TRADE_TRADEOVER					(0x07)				//一次交易流程完成
-#define TRADE_WEIHU						(0x08)				//进入维护模式
-#define TRADE_CHECKCHANNEL				(0x12)				//查询货道
-#define TRADE_OUTGOODS					(0x13)				//出货
-#define TRADE_SELECTGOODS				(0x14)				//是否有选货按键
-#define TRADE_CHECKDEVICEERR			(0x15)				//检测设备是否故障
-#define TRADE_STOPSERVICE				(0x16)				//停止服务
-
-
 #define TRADE_FAULT						(0x17)				//故障
-#endif
+
 
 
 
 static volatile uint8 g_enterMenu = 0;//维护模式标志
-
-
-volatile unsigned int TestPluse;
-
-
-uint32_t nMinDispMoney = 0;
-unsigned int MaxColumnMoney=0;
-
-
-extern uint16_t HardWareErr;
-volatile uint16_t WaitCmdTimer;
-
 
 volatile static uint8 g_billRatio = 0,g_coinRatio = 0;
 
@@ -158,7 +136,6 @@ uint8 MT_checkDev(void)
 {
 	uint16 errNo = 0;
 	uint8 i,hpIsEmpty,hpIsFault,hpUsedNum;
-	
 	errNo = MDB_getBillErrNo();
 	if(errNo > 0){ //纸币器有故障
 		LED_showString("BLEE");
@@ -180,7 +157,7 @@ uint8 MT_checkDev(void)
 		else if(stHopper[i].state == HP_STATE_FAULT || stHopper[i].state == HP_STATE_COM){
 			hpIsFault++;
 		}
-
+		
 	}
 	
 	if(hpIsFault >= hpUsedNum){
@@ -193,6 +170,13 @@ uint8 MT_checkDev(void)
 		return 1;
 	}
 
+	#if 0
+	if(min_hp > 0){
+		if(stHopper[min_hp - 1].state == HP_STATE_QUEBI){ //最小面值hopper缺币 关闭硬币器
+			
+		}
+	}
+	#endif
 	return 0;
 }
 
@@ -237,49 +221,14 @@ uint8 MT_checkPayout(uint32 billAmount,uint32 coinAmount)
 		}
 	}
 
+	if(billAmount == 0 && coinAmount < g_hpMinCh){ //硬币比最小面值还小 无法找零
+		return 0;
+	}
+
 	return 1;
 }
 
 
-
-/*********************************************************************************************************
-** Function name:       CreateMBox
-** Descriptions:        为任务之间通信创建邮箱和信号量
-** input parameters:    无
-** output parameters:   无
-** Returned value:      无
-*********************************************************************************************************/
-void setPayKey(const unsigned char flag)
-{
-
-	static unsigned char on = 0;
-	on = flag;
-	
-#if 0
-	if(flag >= 2)
-	{
-		FIO0DIR |= (1ul << 30);
-		FIO0CLR	|= (1ul << 30);
-		on = 0;
-		Trace("setPayKey:%d\r\n",flag);
-	}
-	else
-	{
-		if(on != flag)
-		{
-			Trace("setPayKey:%d\r\n",flag);
-			FIO0DIR |= (1ul << 30);
-			if(flag == 1)
-				FIO0SET |= (1ul << 30);
-			else
-				FIO0CLR	|= (1ul << 30);
-
-			on = flag;
-		}		
-	}
-#endif	
-
-}
 
 
 static void MT_saveTradeLog(Q_MSG *msg)
@@ -297,6 +246,26 @@ static void MT_saveTradeLog(Q_MSG *msg)
 		print_main("hpChanged[%d]= %d\r\n",i,stLog.hpChanged[i]);
 	}
 	FM_writeLogToFlash();
+}
+
+
+static void MT_ledPaomaDisplay(void)
+{
+	static uint8 in  = 1;
+	if(Timer.led_paoma == 0){
+		switch(in){
+			case 1:LED_showString("0###");break;
+			case 2:LED_showString("#0##");break;
+			case 3:LED_showString("##0#");break;
+			case 4:LED_showString("###0");break;
+			default:in = 1;break;
+		}
+		
+		in = (in >= 4) ? 1 : in + 1;
+		Timer.led_paoma = 500/10;
+	}						
+	
+	
 }
 
 
@@ -324,7 +293,6 @@ void task_trade(void)
 				remainAmount = 0;
 				curBillAmount = 0;
 				curCoinAmount = 0;		
-				
 				Timer.usr_opt = 1000; //10s
 				DEV_enableReq(OBJ_ALL,1);
 				state = TRADE_DISP;
@@ -347,6 +315,10 @@ void task_trade(void)
 				}
 				else{ //空闲状态 
 					MT_checkMenu(state); //检测按键
+					if(Timer.usr_opt == 0){
+						MT_ledPaomaDisplay();
+					}
+					
 					if(MT_checkDev() > 0){	//检测设备状态
 						state = TRADE_FAULT;
 						DEV_enableReq(OBJ_ALL,0);
@@ -361,8 +333,17 @@ void task_trade(void)
 				DEV_payoutReq(curBillAmount,curCoinAmount);//正在找零
 			
 				msg = DEV_msgRpt(DEV_PAYOUT,900000); //等待找零结果
+				if(msg->iou > 0){
+					LED_showString("####");
+					msleep(500);
+					LED_showAmount(msg->iou);
+					msleep(500);
+					LED_showString("####");
+					msleep(500);
+					LED_showAmount(msg->iou);
+					msleep(2000);
+				}
 				MT_saveTradeLog(msg);
-				
 				state = TRADE_BEGIN;
 				break;
 			

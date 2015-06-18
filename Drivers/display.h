@@ -115,10 +115,10 @@ void UserLedSet(unsigned char Mode);											//”√ªßµ∆
 void UserSeloutLedSet(unsigned char Mode);										//
 void UserNochargeLedSet(unsigned char Mode);									//
 void UserErrorLedSet(unsigned char Mode);										//
-void displayUserMemuLED(unsigned char Memu,unsigned char subMenu);
-void displayAdminMemuLED(unsigned char Memu,unsigned char subMenu);
+
+
 void ledPaoMaShow(unsigned char type);
-void ledPaoMaShow1(unsigned char type);
+
 
 void led_dispaly_off(void);
 

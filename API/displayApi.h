@@ -26,7 +26,7 @@ void LED_ctrl(uint8 no,uint8 s);
 
 void initDisplay(void);
 void LED_hopperCheck(void);
-void ledPaomaDisplay(void);
+
 void LED_showData(uint32 data);
 void LED_showAmount(uint32 amount);
 void LED_showLargeData(uint32 value,uint8 point);

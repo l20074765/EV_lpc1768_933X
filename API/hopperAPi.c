@@ -446,10 +446,10 @@ static uint16 HP_getCheckTimer(void)
 {
 	uint16 time;
 	uint8 i;
-	time = 120;
+	time = 2400;
 	for(i = 0;i < HP_SUM;i++){
 		if(stHopper[i].ch > 0){
-			time = (time <= 50) ? 50 : time - 10;
+			time = (time <= 300) ? 300 : time - 300;
 		}
 	}
 	return time;
@@ -470,7 +470,7 @@ uint8 HP_allHopperCheck(void){
 				stHopper[i].state = HP_STATE_COM; //Í¨ÐÅÊ§°Ü
 			}
 		}
-		Timer.hopper_check_timeout = HP_getCheckTimer();//3Ãë¼ì²âÒ»¸ö¶·
+		Timer.hopper_check_timeout = 300;//HP_getCheckTimer();//3Ãë¼ì²âÒ»¸ö¶·
 	}
 	return 1;
 }

@@ -39,7 +39,7 @@ static void DEV_registerOSQ(void)
 }
 
 
-
+uint32 g_hpMinCh = 0;
 
 
 
@@ -119,7 +119,7 @@ uint8 DEV_payoutReq(uint32 billAmount,uint32 coinAmount)
 
 uint8 DEV_payoutRpt(Q_MSG *msg)
 {
-	uint8 err = 0,i,j,n;
+	uint8 i,n;
 	uint32 amount = 0,changed = 0,remain = 0;
 	uint16 changedCount;
 	uint16 hp[HP_SUM] = {0};
@@ -168,7 +168,7 @@ uint8 DEV_payoutRpt(Q_MSG *msg)
 	}
 	
 	print_dev("DEV_payoutRpt:amount=%d,changed=%d\r\n",amount,changed);
-	remain = MDB_billCost(amount);
+	remain = MDB_billCost(changed);
 	print_dev("DEV_payoutRpt:remain=%d\r\n",remain);
 	remain = MDB_coinCost(remain);
 	
@@ -183,8 +183,15 @@ uint8 DEV_payoutRpt(Q_MSG *msg)
 		dev_msg_r[dev_in_r].hp[i] = hp[i];
 	}
 	print_dev("\r\n");
-	if(amount >= changed){
-		dev_msg_r[dev_in_r].iou = amount - changed;
+	if(amount > changed){
+		remain = amount - changed;
+		if(remain < g_hpMinCh){ //无法找零
+			dev_msg_r[dev_in_r].iou = 0;
+		}
+		else{
+			MDB_coinCost(remain);
+			dev_msg_r[dev_in_r].iou = remain;
+		}
 	}
 	else{
 		dev_msg_r[dev_in_r].iou = 0;
@@ -221,9 +228,9 @@ uint8 DEV_hpPayoutRpt(Q_MSG *msg)
 
 static void DEV_reqPoll(void)
 {
-	uint8 i,err;
-	Q_MSG *msg;
-	msg = (Q_MSG *)OSQPend(dev_Q_s,5,&err);
+	uint8 err;
+	Q_MSG *msg; 
+	msg = (Q_MSG *)OSQPend(dev_Q_s,2,&err);
 	if(err == OS_NO_ERR){ //有请求
 		print_dev("DEV_reqPoll:type=%d\r\n",msg->type);
 		switch(msg->type){
@@ -282,19 +289,16 @@ Q_MSG *DEV_msgRpt(uint8 type,uint32 timeout)
 void MT_devInit(void)
 {
 	uint8 res,type,i,j;
-	//初始化硬币器
-	type = MDB_getCoinAcceptor();
+	type = MDB_getCoinAcceptor();//初始化硬币器
 	if(type == COIN_ACCEPTOR_PPLUSE){
-		LED_show("CO--");
+		LED_showString("CO--");
 		PCOIN_initParallelPluse(stMdb.highEnable);
-		res = 1;
-		LED_show("CO-1%d",res);
+		LED_showString("CO-1");
 	}
 	else if(type == COIN_ACCEPTOR_SPLUSE){
-		LED_show("CO--");
+		LED_showString("CO--");
 		PCOIN_initSerialPluse(stMdb.highEnable);
-		res = 1;
-		LED_show("CO-1%d",res);
+		LED_showString("CO-1");
 	}
 	msleep(100);
 	
@@ -314,7 +318,13 @@ void MT_devInit(void)
 				}
 				else{
 					LED_show("HP%d%d",i + 1,0);
-					msleep(1500);
+					msleep(500);
+				}
+			}
+			
+			if(stHopperLevel[i].ch == 0){
+				if(i > 0){
+					g_hpMinCh = stHopperLevel[i - 1].ch;
 				}
 			}
 		}
@@ -327,6 +337,8 @@ void MT_devInit(void)
 				stMdb.coinRato[i].ch[j] = stHopperLevel[j].ch;
 			}
 		}
+		
+		
 	}
 	msleep(100);
 
@@ -350,7 +362,7 @@ void MT_devInit(void)
 		
 		if(i >= 3){
 			LED_show("BL-0");
-			msleep(2000);
+			msleep(1000);
 		}
 	}
 }
@@ -364,18 +376,15 @@ void task_dev(void *pdata)
 {
 	uint8 temp;
 	pdata = pdata;
-	
 	DEV_registerOSQ();
 	LED_ctrl(1,0);
 	LED_ctrl(2,0);
 	LED_ctrl(3,0);
-	
 	MT_devInit();
-	msleep(500);
+	//msleep(500);
 	DEV_msg_rpt(DEV_INIT);
 	
 	while(1){
-		//print_dev("task_dev\r\n");
 		temp = MDB_getBillAcceptor();
 		if(temp == BILL_ACCEPTOR_MDB){
 			billTaskPoll();
@@ -390,9 +399,8 @@ void task_dev(void *pdata)
 			HP_task();
 		}	
 		
-		
 		DEV_reqPoll();
-		msleep(90);
+		msleep(80);
 	}
 	
 	

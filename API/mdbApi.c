@@ -220,16 +220,7 @@ uint32 MDB_getCoinRecvAmount(void)
 	}
 }
 
-void MDB_cost(uint32 cost)
-{
-	uint32 temp32;
-	uint8 temp;
-	temp32 = cost;
-	temp = MDB_getBillAcceptor();
-	if(temp == BILL_ACCEPTOR_MDB){
-		
-	}
-}
+
 
 
 uint8 MDB_billInit(void)

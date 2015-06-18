@@ -24,11 +24,11 @@ extern volatile unsigned int EVBCONVERSATIONWAITACKTIMEOUT;
 
 extern volatile unsigned int UART3RECVACKMSGTIMEOUT;
 extern volatile uint16_t RS232WAITRECVPACKTIME;
-extern volatile unsigned int TestPluse;
+
 extern volatile uint16_t Hptime1,Hptime2,Hptime3;
 
 
-extern volatile uint16_t WaitCmdTimer;
+
 
 extern volatile unsigned short HpHandleTimer;
 
@@ -118,12 +118,6 @@ void TIMER0_IRQHandler (void)
 	if(UART3RECVACKMSGTIMEOUT)
 		UART3RECVACKMSGTIMEOUT--;
 
-	if(TestPluse)
-		TestPluse--;
-	if(WaitCmdTimer)
-		WaitCmdTimer--;		
-	if(paomaLedTimer)
-		paomaLedTimer--;
 	
 	LED_hopperCheck();
 	

@@ -21,23 +21,16 @@
 
 
 typedef struct _timer_st_{
-	unsigned short bentoTimeout;
 	unsigned short timer_bill_reset;
 	unsigned short timer_coin_reset;
-	unsigned short coin_payout_timeout;
 	unsigned short bill_escrow_timeout;
-	unsigned short bill_payout_timeout;
-	unsigned short bill_status_timeout;
-	unsigned short db_recv_timeout;
-	unsigned short uart0_timeout;
 	unsigned short hopper_recv_timeout;
 	unsigned short hopper_payout_timeout;
 	unsigned short hopper_check_timeout;
 	unsigned short mdb_timeout;
-	unsigned short timer_hopper_reset;
 	unsigned short usr_opt;
-	unsigned short usr_changer;
 	unsigned short dev_msg_rpt;
+	unsigned short led_paoma;
 }TIMER_ST;
 extern TIMER_ST Timer;
 

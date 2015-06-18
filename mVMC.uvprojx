@@ -414,11 +414,6 @@
               <FilePath>.\APP\main.c</FilePath>
             </File>
             <File>
-              <FileName>common.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\APP\common.c</FilePath>
-            </File>
-            <File>
               <FileName>Menu.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\APP\Menu.c</FilePath>

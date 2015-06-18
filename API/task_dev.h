@@ -32,6 +32,9 @@ typedef struct {
 }Q_MSG;
 
 
+extern uint32 g_hpMinCh;
+
+
 
 void task_dev(void *pdata);
 Q_MSG *DEV_rptPoll(void);

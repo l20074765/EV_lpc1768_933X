@@ -218,7 +218,7 @@ void LED_showLargeData(uint32 value,uint8 point)
 {
 	uint32 temp; 
 	uint8 i = 0,num = 0,buf[30] ={0},v;//声请最高12位的数据
-	uint8 key,returnFlag = 0;
+
 	temp = value;
 	num = 0;
 	while(temp > 0){//将大数 拆分到数组中去
@@ -428,48 +428,14 @@ void LED_showString(char *str)
 void LED_show(char *format,...)
 {
 	va_list arg_ptr;
-	uint8 buf[64] = {0},len;
+	uint8 buf[64] = {0};
 	memset(buf,0,sizeof(buf));
 	va_start(arg_ptr, format);
-	len = vsprintf((char *)buf,(const char *)format,arg_ptr);
+	vsprintf((char *)buf,(const char *)format,arg_ptr);
 	va_end(arg_ptr);
 	LED_showString((char *)buf);
 	
 }
-
-
-
-
-
-
-void ledPaomaDisplay(void)
-{
-	#if 0
-	static unsigned char paomaIndex  = 1;
-	//print_log("paoma.....timer = %d\r\n",Timer.led_paoma_timer);
-	if(!Timer.led_paoma_timer)
-	{
-		//显示跑马灯
-#if 0
-		ledPaoMaShow(paomaIndex);
-		if(paomaIndex >= 12)
-			paomaIndex = 1;
-		else
-			paomaIndex++;
-#endif
-		ledPaoMaShow1(paomaIndex);
-		if(paomaIndex >= 4)
-			paomaIndex = 1;
-		else
-			paomaIndex++;	
-
-		
-		Timer.led_paoma_timer = 500/10;
-	}						
-	#endif
-	
-}
-
 
 
 void LED_ctrl(uint8 no,uint8 s)
@@ -488,8 +454,6 @@ void LED_hopperCheck(void)
 {
 	static uint8 tick1 = 0,tick2 = 0;
 	static uint8 led1 = 0,led2 = 0;
-	uint8 i;
-	
 	if(tick1 == 0){	
 		if(led1 == 1){
 			led1 = 0;
