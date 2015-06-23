@@ -295,11 +295,13 @@ void MT_devInit(void)
 	type = MDB_getCoinAcceptor();//³õÊ¼»¯Ó²±ÒÆ÷
 	if(type == COIN_ACCEPTOR_PPLUSE){
 		LED_showString("CO--");
+		print_dev("COIN_ACCEPTOR_PPLUSE:init:hightEnable=%d\r\n",stMdb.highEnable);
 		PCOIN_initParallelPluse(stMdb.highEnable);
 		LED_showString("CO-1");
 	}
 	else if(type == COIN_ACCEPTOR_SPLUSE){
 		LED_showString("CO--");
+		print_dev("COIN_ACCEPTOR_SPLUSE:init:hightEnable=%d\r\n",stMdb.highEnable);
 		PCOIN_initSerialPluse(stMdb.highEnable);
 		LED_showString("CO-1");
 	}

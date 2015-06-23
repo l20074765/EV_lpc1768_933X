@@ -398,8 +398,8 @@ uint8 MN_userMenu(void)
 					MN_dispAmount(stLog.iou);
 					break;		
 
-				case 6://reserved
-					
+				case 6://上次交易欠费金额
+					MN_dispAmount(stLog.lastIou);
 					break;	
 
 				case 7://hopper1出币数
@@ -493,7 +493,7 @@ uint8 MN_getInputValue(uint32 *ch,uint8 in)
 					msleep(500);	
 					LED_showAmount(MDB_valueToCents(temp));	
 					msleep(500);
-					returnFlag = 1;	
+					//returnFlag = 1;	
 					isChanged = 1;
 				}
 				else{
@@ -812,6 +812,75 @@ uint8 MN_setRato(ST_CHANGE_RATO *rato)
 
 
 /*********************************************************************************************************
+** Function name:       MN_setCoinHighEnbale
+** Descriptions:        设置硬币器高使能
+** input parameters:    
+** output parameters:   无
+** Returned value:      1 配置有更改  0 配置无更改
+*********************************************************************************************************/
+uint8 MN_setCoinHighEnbale(uint8 type)
+{
+	uint8 isChanged = 0,isEdit = 0;
+	uint8 key,topReturnFlag = 0;
+	uint8 topFlush = 1;
+	uint8 highEnable;
+	
+	
+	while(1){
+		if(topFlush == 1){
+			topFlush = 0;
+			highEnable = stMdb.highEnable;
+			LED_show("CE-%d",highEnable);
+		}
+		key = MN_getKey();
+		switch(key){
+			case '0':case '1':
+				if(isEdit){
+					highEnable = key - '0';
+					LED_show("CE-%d",highEnable);
+				}
+				break;
+			case 'E':
+				if(isEdit){
+					isEdit = 0;
+					stMdb.highEnable = highEnable;
+					isChanged = 1;
+					topFlush = 1;
+					LED_showString("####");
+					msleep(200);
+					FM_writeToFlash();					
+				}
+				else{
+					LED_showString("####");
+					msleep(200);
+					LED_show("CE-0");
+					isEdit = 1;
+				}
+				break;
+			case 'C':
+				if(isEdit > 0){
+					isEdit = 0;
+					topFlush = 1;
+				}
+				else{
+					topReturnFlag = 1;
+				}
+				break;
+			
+			default:
+				break;
+		}
+		
+		
+		if(topReturnFlag > 0){
+			return (isChanged > 0 ? 1 : 0);
+		}
+		msleep(50);
+	}
+	
+}
+
+/*********************************************************************************************************
 ** Function name:       MN_setCoinType
 ** Descriptions:        设置硬币器类型
 ** input parameters:    
@@ -820,24 +889,46 @@ uint8 MN_setRato(ST_CHANGE_RATO *rato)
 *********************************************************************************************************/
 uint8 MN_setCoinType(uint8 type)
 {
-	uint8 isChanged = 0;
-	uint8 key,index = 0,topReturnFlag = 0;
+	uint8 isChanged = 0,isEdit = 0;
+	uint8 key,topReturnFlag = 0;
 	uint8 topFlush = 1;
-	uint8 coin_type,highenable;
+	uint8 coin_type;
 	
 	
 	while(1){
 		if(topFlush == 1){
 			topFlush = 0;
 			coin_type = MDB_getCoinAcceptor();
-			highenable = stMdb.highEnable;
-			LED_show("C%d-%d",coin_type,highenable);
+			LED_show("C--%d",coin_type);
 		}
 		key = MN_getKey();
 		switch(key){
+			case '0':case '1':case '2':case '3':
+				if(isEdit){
+					coin_type = key - '0';
+					LED_show("C--%d",coin_type);
+				}
+				break;
+			case 'E':
+				if(isEdit){
+					isEdit = 0;
+					MDB_setCoinAcceptor(coin_type);
+					isChanged = 1;
+					topFlush = 1;
+					LED_showString("####");
+					msleep(200);	
+					FM_writeToFlash();
+				}
+				else{
+					LED_showString("####");
+					msleep(200);
+					LED_show("C--0");
+					isEdit = 1;
+				}
+				break;
 			case 'C':
-				if(index > 0){
-					index = 0;
+				if(isEdit > 0){
+					isEdit = 0;
 					topFlush = 1;
 				}
 				else{
@@ -1069,15 +1160,23 @@ uint8 MN_adminMenu(void)
 				case 8: //配置硬币器类型
 					isChanged += MN_setCoinType(8);
 					break;
+				case 9:
+					isChanged += MN_setCoinHighEnbale(9);
+					break;
 				default:break;
 			}
 		}
 		
 		
 		if(topReturnFlag == 1){
-			return (isChanged > 0) ? 1 : 0;
+			if(isChanged > 0){
+				
+				return 1;
+			}
+			else{
+				return 0;
+			}
 		}
-		
 		msleep(50);
 	}
 }

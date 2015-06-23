@@ -80,7 +80,7 @@ void SystemParaInit(void)
 	FM_readLogFromFlash();
 	MDB_setBillAcceptor(BILL_ACCEPTOR_MDB);
 	MDB_setBillDispenser(BILL_DISPENSER_MDB);
-	MDB_setCoinAcceptor(COIN_ACCEPTOR_PPLUSE);
+	//MDB_setCoinAcceptor(COIN_ACCEPTOR_PPLUSE);
 	MDB_setCoinDispenser(COIN_DISPENSER_HOPPER);
 	
 	
@@ -189,10 +189,6 @@ uint8 MT_checkDev(void)
 		if(lastPayFail >= stHopperLevel[g_hpNo - 1].num){
 			LED_showString("####");
 			msleep(1000);
-			LED_showString("HP--");	
-			msleep(1000);
-			LED_showString("####");
-			msleep(1000);
 			LED_showAmount(g_iou);
 			msleep(1000);
 			return 1;
@@ -253,6 +249,7 @@ uint8 MT_checkPayout(uint32 billAmount,uint32 coinAmount)
 	//print_main("bill=%d,coin=%d,minch=%d\r\n",billAmount,coinAmount,g_hpMinCh);
 	if(billAmount == 0 && coinAmount < g_hpMinCh){ //硬币比最小面值还小 无法找零
 		return 0;
+	
 	}
 
 	return 1;
@@ -268,6 +265,8 @@ static void MT_saveTradeLog(Q_MSG *msg)
 	stLog.coinRecv += msg->coinAmount;
 	stLog.iou += msg->iou;
 	stLog.coinChanged += msg->coinChanged;
+	stLog.lastIou = msg->iou;
+	
 	print_main("LOG:bRecv=%d,cRecv=%d,iou=%d,changed=%d\r\n",
 		stLog.billRecv,stLog.coinRecv,stLog.iou,stLog.coinChanged);
 	
@@ -275,6 +274,8 @@ static void MT_saveTradeLog(Q_MSG *msg)
 		stLog.hpChanged[i] += msg->hp[i];
 		print_main("hpChanged[%d]= %d\r\n",i,stLog.hpChanged[i]);
 	}
+	
+	
 	FM_writeLogToFlash();
 }
 

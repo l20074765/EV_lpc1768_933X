@@ -135,7 +135,13 @@ uint8 HP_send_check(ST_HOPPER *hopper)
 				if((s & (0x01U << 4)) || (s & (0x01U << 6))){ //hopper 故障
 					hopper->state = HP_STATE_FAULT;
 				}
+				
+				if(hopper->state != HP_STATE_QUEBI){
+					hopper->state = HP_STATE_FAULT;
+				}
 			}
+			
+			
 			hopper->lastCount = INTEG16(recvbuf[6], recvbuf[5]);
 			return 1;
 		}
@@ -310,7 +316,7 @@ uint16 HP_payout_by_no(uint8 addr,uint16 num)
 *********************************************************************************************************/
 uint16  HP_payout_by_level(uint8 l,uint16 payCount,uint16 *hp)
 {
-	uint8 i,cycleFlag = 0,res;
+	uint8 i,j,cycleFlag = 0,res;
 	uint16 payCountTemp = 0;
 	uint16 changedCount = 0;
 	ST_HOPPER *hopper;
@@ -362,23 +368,29 @@ uint16  HP_payout_by_level(uint8 l,uint16 payCount,uint16 *hp)
 		hopper = stHopperLevel[l].hopper[i];
 		if(hopper->lastPayFail >= HP_PAYFAIL_NUM)//检查设备上次找零失败
 			continue;
-		payCountTemp = payCount - changedCount;
-		res = HP_payout_by_addr(hopper,payCountTemp);
-		print_hopper("Select--level = %d addr= %d res =%d\r\n",l,hopper->addr,res);
-		if(res == 1){
-			changedCount  += payCountTemp;
-			hp[hopper->addr] += hopper->lastCount;
-			hopper->lastPayFail =  0;//故障清除
-			return changedCount;
+			
+		for(j = 0;j < 2;j++){
+			payCountTemp = payCount - changedCount;
+			res = HP_payout_by_addr(hopper,payCountTemp);
+			print_hopper("Select--level = %d addr= %d res =%d\r\n",l,hopper->addr,res);
+			if(res == 1){
+				changedCount  += payCountTemp;
+				hp[hopper->addr] += hopper->lastCount;
+				hopper->lastPayFail =  0;//故障清除
+				return changedCount;
+			}
+			else{
+				hp[hopper->addr] += hopper->lastCount;
+				changedCount += hopper->lastCount;
+				print_hopper("PayCount = %d,hopper[%d]->lastCount =%d,changedCount =%d\r\n",
+						payCount,i,hopper->lastCount,changedCount);
+				//到此表示该斗 已经无法找币 置特殊故障并标记		
+				hopper->lastPayFail++;//故障+1
+			}
 		}
-		else{
-			hp[hopper->addr] += hopper->lastCount;
-			changedCount += hopper->lastCount;
-			print_hopper("PayCount = %d,hopper[%d]->lastCount =%d,changedCount =%d\r\n",
-					payCount,i,hopper->lastCount,changedCount);
-			//到此表示该斗 已经无法找币 置特殊故障并标记		
-			hopper->lastPayFail++;//故障+1
-		}				
+				
+		
+						
 	}
 	return changedCount;
 }

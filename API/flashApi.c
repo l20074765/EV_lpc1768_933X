@@ -173,6 +173,10 @@ unsigned char FM_readLogFromFlash(void)
 		Trace("Flash-hpChanged[%d]= %d\r\n",i,stLog.hpChanged[i]);
 	}
 	
+	stLog.lastIou = INTEG32(buf[in + 0],buf[in + 1],buf[in + 2],buf[in + 3]);
+	in += 4;
+	
+	
 	Trace("readLog:size=%d\r\n",in);
 	return 1;
 }
@@ -210,6 +214,11 @@ unsigned char FM_writeLogToFlash(void)
 		buf[in++] = L0UINT32(stLog.hpChanged[i]);
 		buf[in++] = L1UINT32(stLog.hpChanged[i]);
 	}
+	
+	buf[in++] = H0UINT32(stLog.lastIou);
+	buf[in++] = H1UINT32(stLog.lastIou);
+	buf[in++] = L0UINT32(stLog.lastIou);
+	buf[in++] = L1UINT32(stLog.lastIou);
 	
 	
 	saveFlash(512,buf,in);

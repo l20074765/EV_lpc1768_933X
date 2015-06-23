@@ -197,7 +197,7 @@ uint8 PCOIN_disableSerialPluse(void)
 	else{
 		FIO0SET |= (SERIALCOIN_CTL|PARALLCOIN_CTL);
 	}
-	stPcoin.isEnable = 1;
+	stPcoin.isEnable = 0;
 	return 1;
 }
 

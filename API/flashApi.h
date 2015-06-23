@@ -33,6 +33,7 @@ typedef struct {
 	uint32 billChanged;
 	uint32 coinChanged;
 	uint32 iou;
+	uint32 lastIou;
 	uint32 hpChanged[HP_SUM];
 }ST_LOG;
 extern ST_LOG stLog;
