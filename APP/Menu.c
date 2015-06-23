@@ -87,9 +87,11 @@ static void MN_hopperOutCheck(uint8 type)
 				topFlush = 1;
 				break;
 			case 'E':
-				MN_dispData(stLog.hpChanged[no - 1]);
-				no = 0;
-				topFlush = 1;
+				if(no > 0){
+					MN_dispData(stLog.hpChanged[no - 1]);
+					no = 0;
+					topFlush = 1;
+				}
 				break;
 			default:break;
 		}
@@ -357,7 +359,7 @@ uint8 MN_userMenu(void)
 				if(subMenu){
 					enterSubMenu = 1;	
 					LED_showString("####");
-					msleep(500);				
+					msleep(200);				
 				}	
 				break;
 			case 'C':
@@ -810,6 +812,56 @@ uint8 MN_setRato(ST_CHANGE_RATO *rato)
 
 
 /*********************************************************************************************************
+** Function name:       MN_setCoinType
+** Descriptions:        ÉèÖÃÓ²±ÒÆ÷ÀàĞÍ
+** input parameters:    
+** output parameters:   ÎŞ
+** Returned value:      1 ÅäÖÃÓĞ¸ü¸Ä  0 ÅäÖÃÎŞ¸ü¸Ä
+*********************************************************************************************************/
+uint8 MN_setCoinType(uint8 type)
+{
+	uint8 isChanged = 0;
+	uint8 key,index = 0,topReturnFlag = 0;
+	uint8 topFlush = 1;
+	uint8 coin_type,highenable;
+	
+	
+	while(1){
+		if(topFlush == 1){
+			topFlush = 0;
+			coin_type = MDB_getCoinAcceptor();
+			highenable = stMdb.highEnable;
+			LED_show("C%d-%d",coin_type,highenable);
+		}
+		key = MN_getKey();
+		switch(key){
+			case 'C':
+				if(index > 0){
+					index = 0;
+					topFlush = 1;
+				}
+				else{
+					topReturnFlag = 1;
+				}
+				break;
+			
+			default:
+				break;
+		}
+		
+		
+		if(topReturnFlag > 0){
+			return (isChanged > 0 ? 1 : 0);
+		}
+		msleep(50);
+	}
+	
+	
+	
+}
+
+
+/*********************************************************************************************************
 ** Function name:       MN_setBillRato
 ** Descriptions:        ÉèÖÃÖ½±Ò¶Ò±Ò±ÈÀı
 ** input parameters:    
@@ -863,6 +915,9 @@ uint8 MN_setBillRato(uint8 type,ST_CHANGE_RATO *rato)
 	}
 	
 }
+
+
+
 
 
 
@@ -966,7 +1021,7 @@ uint8 MN_adminMenu(void)
 				if(menuKey){
 					enterSubMenu = 1;	
 					LED_showString("####");
-					msleep(500);				
+					msleep(200);				
 				}	
 				break;
 			case 'C':
@@ -1011,7 +1066,9 @@ uint8 MN_adminMenu(void)
 					LED_showString("A06.0");
 					isChanged += MN_setBillRato(6,stMdb.coinRato);
 					break;
-				
+				case 8: //ÅäÖÃÓ²±ÒÆ÷ÀàĞÍ
+					isChanged += MN_setCoinType(8);
+					break;
 				default:break;
 			}
 		}
@@ -1050,32 +1107,36 @@ uint8 MN_isMenuEntered(void)
 {
 	uint8 key = 0x00;
 	static uint8 adminFlag = 0,userFalg = 0;
-    
-	key = MN_getKey();
-	//print_menu("key=%c %d \r\n",(char)key,key);
-	if(key != 0x00){
-		if(key == 'D'){
-			adminFlag = 0;
-			userFalg++;
-		}
-		else if(key == '>'){
-			userFalg = 0;
-			adminFlag++;
+    while(1){
+		key = MN_getKey();
+		if(key != 0x00){
+			if(key == 'D'){
+				adminFlag = 0;
+				userFalg++;
+			}
+			else if(key == '>'){
+				userFalg = 0;
+				adminFlag++;
+			}
+			else{
+				userFalg = 0;
+				adminFlag = 0;
+			}
+			if(adminFlag >= 3){
+				adminFlag = 0;
+				return 2;
+			}
+			
+			if(userFalg >= 3){
+				userFalg = 0;
+				return 1;
+			}
 		}
 		else{
-			userFalg = 0;
-			adminFlag = 0;
-		}
-		if(adminFlag >= 3){
-			adminFlag = 0;
-			return 2;
-		}
-		
-		if(userFalg >= 3){
-			userFalg = 0;
-			return 1;
+			break;
 		}
 	}
+	
 	
 	return 0;
 }

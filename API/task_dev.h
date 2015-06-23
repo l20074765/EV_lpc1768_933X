@@ -33,7 +33,7 @@ typedef struct {
 
 
 extern uint32 g_hpMinCh;
-
+extern uint8 g_hpNo;
 
 
 void task_dev(void *pdata);

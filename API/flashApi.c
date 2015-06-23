@@ -44,7 +44,7 @@ unsigned char FM_readFromFlash(void)
 	ST_CHANGE_RATO *ratio;
 	
 	memset(buf,0,sizeof(buf));
-	readFlash(0x00,buf,256);
+	readFlash(0x00,buf,512);
 	if(buf[index++] != 0xE5){
 		return 0;
 	}
@@ -66,6 +66,16 @@ unsigned char FM_readFromFlash(void)
 	stMdb.pointValue = buf[index++];
 	for(i = 0;i < 8;i++){
 		ratio = &stMdb.billRato[i];
+		ratio->amount = INTEG32(buf[index + 0],buf[index + 1],
+									buf[index + 2],buf[index + 3]);
+		index += 4;
+		for(j = 0;j < 8;j++){
+			ratio->num[j] = buf[index++];
+		}
+	}
+	
+	for(i = 0;i < 8;i++){
+		ratio = &stMdb.coinRato[i];
 		ratio->amount = INTEG32(buf[index + 0],buf[index + 1],
 									buf[index + 2],buf[index + 3]);
 		index += 4;
@@ -116,6 +126,18 @@ unsigned char FM_writeToFlash(void)
 		}
 	}
 	
+	for(i = 0;i < 8;i++){
+		ratio = &stMdb.coinRato[i];
+		buf[index++] = H0UINT32(ratio->amount);
+		buf[index++] = H1UINT32(ratio->amount);
+		buf[index++] = L0UINT32(ratio->amount);
+		buf[index++] = L1UINT32(ratio->amount);
+		for(j = 0;j < 8;j++){
+			buf[index++] = ratio->num[j];
+		}
+	}
+	
+	
 
 	saveFlash(0x00,buf,index);
 	return 1;
@@ -127,7 +149,7 @@ unsigned char FM_readLogFromFlash(void)
 	unsigned short in = 0,i;
 
 	memset(buf,0,sizeof(buf));
-	readFlash(512,buf,256);
+	readFlash(512,buf,512);
 	if(buf[in++] != 0xE5){
 		Trace("buf[in++] != 0xE5\r\n");
 		return 0;

@@ -40,7 +40,7 @@ static void DEV_registerOSQ(void)
 
 
 uint32 g_hpMinCh = 0;
-
+uint8  g_hpNo = 0;
 
 
 uint8 DEV_msg_req(uint8 type)
@@ -168,9 +168,6 @@ uint8 DEV_payoutRpt(Q_MSG *msg)
 	}
 	
 	print_dev("DEV_payoutRpt:amount=%d,changed=%d\r\n",amount,changed);
-	remain = MDB_billCost(changed);
-	print_dev("DEV_payoutRpt:remain=%d\r\n",remain);
-	remain = MDB_coinCost(remain);
 	
 	print_dev("DEV_payoutRpt:remain=%d\r\n",remain);
 	
@@ -185,19 +182,25 @@ uint8 DEV_payoutRpt(Q_MSG *msg)
 	print_dev("\r\n");
 	if(amount > changed){
 		remain = amount - changed;
+		dev_msg_r[dev_in_r].iou = remain;
+		#if 0
 		if(remain < g_hpMinCh){ //无法找零
 			dev_msg_r[dev_in_r].iou = 0;
 		}
 		else{
-			MDB_coinCost(remain);
 			dev_msg_r[dev_in_r].iou = remain;
 		}
+		#endif
 	}
 	else{
 		dev_msg_r[dev_in_r].iou = 0;
 	}
+	//扣款 扣完
+	remain = MDB_billCost(msg->billAmount + msg->coinAmount);
+	print_dev("DEV_payoutRpt:remain=%d\r\n",remain);
+	remain = MDB_coinCost(remain);
 	
-
+	
 	return DEV_msg_rpt(DEV_PAYOUT);
 }
 
@@ -321,18 +324,23 @@ void MT_devInit(void)
 					msleep(500);
 				}
 			}
-			
+		}
+		
+		for(i = 0;i < HP_SUM;i++){
 			if(stHopperLevel[i].ch == 0){
+				print_dev("HP_min no=%d,ch=%d\r\n",i,stHopperLevel[i - 1].ch);
 				if(i > 0){
 					g_hpMinCh = stHopperLevel[i - 1].ch;
+					g_hpNo = i;
 				}
+				break;
 			}
 		}
 		
 		for(i = 0; i < 8;i++){
-			print_dev("ratio[%d]\r\n",i);
+			//print_dev("ratio[%d]\r\n",i);
 			for(j = 0;j < HP_SUM;j++){
-				print_dev("ch[%d]=%d\r\n",j,stHopperLevel[j].ch);
+				//print_dev("ch[%d]=%d\r\n",j,stHopperLevel[j].ch);
 				stMdb.billRato[i].ch[j] = stHopperLevel[j].ch;
 				stMdb.coinRato[i].ch[j] = stHopperLevel[j].ch;
 			}

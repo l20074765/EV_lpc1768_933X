@@ -27,7 +27,7 @@
 static volatile uint8 g_enterMenu = 0;//维护模式标志
 
 volatile static uint8 g_billRatio = 0,g_coinRatio = 0;
-
+static uint32 g_iou = 0;
 
 
 
@@ -136,6 +136,8 @@ uint8 MT_checkDev(void)
 {
 	uint16 errNo = 0;
 	uint8 i,hpIsEmpty,hpIsFault,hpUsedNum;
+	uint8 lastPayFail;
+	ST_HOPPER *hopper;
 	errNo = MDB_getBillErrNo();
 	if(errNo > 0){ //纸币器有故障
 		LED_showString("BLEE");
@@ -170,13 +172,33 @@ uint8 MT_checkDev(void)
 		return 1;
 	}
 
-	#if 0
-	if(min_hp > 0){
-		if(stHopper[min_hp - 1].state == HP_STATE_QUEBI){ //最小面值hopper缺币 关闭硬币器
-			
+
+	if(g_hpNo > 0){
+		lastPayFail = 0;
+		//print_main("g_hpNo=%d\r\n",g_hpNo);
+		for(i = 0;i < stHopperLevel[g_hpNo - 1].num;i++){
+			hopper = stHopperLevel[g_hpNo - 1].hopper[i];
+			if(hopper->lastPayFail > 0){
+				lastPayFail++;
+			}
+			else{
+				break;
+			}
+		}
+		 //所有最小面值hopper找币都失败
+		if(lastPayFail >= stHopperLevel[g_hpNo - 1].num){
+			LED_showString("####");
+			msleep(1000);
+			LED_showString("HP--");	
+			msleep(1000);
+			LED_showString("####");
+			msleep(1000);
+			LED_showAmount(g_iou);
+			msleep(1000);
+			return 1;
 		}
 	}
-	#endif
+
 	return 0;
 }
 
@@ -209,18 +231,26 @@ uint8 MT_checkPayout(uint32 billAmount,uint32 coinAmount)
 	g_billRatio = 0;
 	g_coinRatio = 0;
 	for(i = 0; i < 8;i++){
+		if(stMdb.billRato[i].amount == 0){
+			continue;
+		}
 		if(billAmount == stMdb.billRato[i].amount){
 			g_billRatio = i + 1;
 			break;
 		}
 	}
 	for(i = 0; i < 8;i++){
+		if(stMdb.coinRato[i].amount == 0){
+			continue;
+		}
 		if(coinAmount == stMdb.coinRato[i].amount){
 			g_coinRatio = i + 1;
 			break;
 		}
 	}
 
+	
+	//print_main("bill=%d,coin=%d,minch=%d\r\n",billAmount,coinAmount,g_hpMinCh);
 	if(billAmount == 0 && coinAmount < g_hpMinCh){ //硬币比最小面值还小 无法找零
 		return 0;
 	}
@@ -249,9 +279,11 @@ static void MT_saveTradeLog(Q_MSG *msg)
 }
 
 
-static void MT_ledPaomaDisplay(void)
+static void MT_ledPaomaDisplay(uint8 init)
 {
 	static uint8 in  = 1;
+	
+	if(init == 1){in = 1;return;}
 	if(Timer.led_paoma == 0){
 		switch(in){
 			case 1:LED_showString("0###");break;
@@ -264,6 +296,7 @@ static void MT_ledPaomaDisplay(void)
 		in = (in >= 4) ? 1 : in + 1;
 		Timer.led_paoma = 500/10;
 	}						
+	
 	
 	
 }
@@ -294,6 +327,7 @@ void task_trade(void)
 				curBillAmount = 0;
 				curCoinAmount = 0;		
 				Timer.usr_opt = 1000; //10s
+				MT_ledPaomaDisplay(1);
 				DEV_enableReq(OBJ_ALL,1);
 				state = TRADE_DISP;
 				break;
@@ -305,9 +339,8 @@ void task_trade(void)
 				curBillAmount = MDB_getBillRecvAmount();//接收纸币
 				curCoinAmount = MDB_getCoinRecvAmount();//接收硬币
 				remainAmount = curBillAmount + curCoinAmount;//总接收金额
-				LED_showAmount(remainAmount);
 				if(remainAmount > 0){ // 有金额进入找零环节
-					//显示金额
+					LED_showAmount(remainAmount);//显示金额
 					print_main("remainAmount1=%d\r\n",remainAmount);
 					if(MT_checkPayout(curBillAmount,curCoinAmount) > 0){ //检查是否可找零
 						state = TRADE_HPOUT;
@@ -316,7 +349,10 @@ void task_trade(void)
 				else{ //空闲状态 
 					MT_checkMenu(state); //检测按键
 					if(Timer.usr_opt == 0){
-						MT_ledPaomaDisplay();
+						MT_ledPaomaDisplay(0);
+					}
+					else{
+						LED_showAmount(0);
 					}
 					
 					if(MT_checkDev() > 0){	//检测设备状态
@@ -342,7 +378,9 @@ void task_trade(void)
 					msleep(500);
 					LED_showAmount(msg->iou);
 					msleep(2000);
+					g_iou = msg->iou;
 				}
+
 				MT_saveTradeLog(msg);
 				state = TRADE_BEGIN;
 				break;

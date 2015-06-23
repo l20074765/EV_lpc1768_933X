@@ -442,6 +442,7 @@ static uint8 HP_getCheckNo(void)
 	return 0xFF;
 }
 
+#if 0
 static uint16 HP_getCheckTimer(void)
 {
 	uint16 time;
@@ -454,6 +455,8 @@ static uint16 HP_getCheckTimer(void)
 	}
 	return time;
 }
+
+#endif
 
 uint8 HP_allHopperCheck(void){
 	uint8 i = 0;
