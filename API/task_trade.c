@@ -136,11 +136,12 @@ uint8 MT_checkDev(void)
 {
 	uint16 errNo = 0;
 	uint8 i,hpIsEmpty,hpIsFault,hpUsedNum;
-	uint8 lastPayFail;
+	uint8 lastPayFail,minHpEmpty;
 	ST_HOPPER *hopper;
 	errNo = MDB_getBillErrNo();
 	if(errNo > 0){ //纸币器有故障
 		LED_showString("BLEE");
+		msleep(200);
 		return 1;
 	}
 	
@@ -164,26 +165,31 @@ uint8 MT_checkDev(void)
 	
 	if(hpIsFault >= hpUsedNum){
 		LED_showString("HPEE");
+		msleep(200);
 		return 1;
 	}
 	
 	if(hpIsEmpty >= hpUsedNum){
 		LED_showString("HP00");
+		msleep(200);
 		return 1;
 	}
 
 
 	if(g_hpNo > 0){
 		lastPayFail = 0;
+		minHpEmpty = 0;
 		//print_main("g_hpNo=%d\r\n",g_hpNo);
 		for(i = 0;i < stHopperLevel[g_hpNo - 1].num;i++){
 			hopper = stHopperLevel[g_hpNo - 1].hopper[i];
 			if(hopper->lastPayFail > 0){
 				lastPayFail++;
 			}
-			else{
-				break;
+			
+			if(hopper->state == HP_STATE_QUEBI){
+				minHpEmpty++;
 			}
+			
 		}
 		 //所有最小面值hopper找币都失败
 		if(lastPayFail >= stHopperLevel[g_hpNo - 1].num){
@@ -191,6 +197,13 @@ uint8 MT_checkDev(void)
 			msleep(1000);
 			LED_showAmount(g_iou);
 			msleep(1000);
+			return 1;
+		}
+		
+		 //所有最小面值hopper都确币了
+		if(minHpEmpty >= stHopperLevel[g_hpNo - 1].num){
+			msleep(200);
+			LED_showString("HP00");
 			return 1;
 		}
 	}
