@@ -726,6 +726,9 @@ uint8 MN_setRato(ST_CHANGE_RATO *rato)
 			case '1': case '2': case '3': case '4': case '5':case '6':case '7':case '8':case '9':case '0':
 				if(isEdit){
 					temp = temp * 10 + (key - '0');
+					if(temp > 99){
+						temp = 0;
+					}
 					toFlush = 1;
 				}
 				else{	//·­Ò³
