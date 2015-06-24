@@ -525,3 +525,14 @@ uint32 MDB_valueToCents(uint32 value)
 	
 }
 
+
+void MDB_clearRecvAmount(void)
+{
+	uint32 amount;
+	amount = MDB_getBillRecvAmount();//接收纸币
+	MDB_billCost(amount);
+	amount = MDB_getCoinRecvAmount();//接收硬币
+	MDB_coinCost(amount);
+}
+
+

@@ -118,6 +118,7 @@ static uint8 MT_checkMenu(const uint8 state)
 		}	
 		g_enterMenu = 0;//跳出维护 清标志
 		
+		MDB_clearRecvAmount(); //退出维护清零收币
 		return 1;
 	}
 	return 0;

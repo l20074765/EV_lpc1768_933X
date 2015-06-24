@@ -64,6 +64,7 @@ uint32 MDB_valueFromCents(uint32 value);
 uint32 MDB_valueToCents(uint32 value);
 uint32 MDB_billCost(uint32 amount);
 uint32 MDB_coinCost(uint32 amount);
+void MDB_clearRecvAmount(void);
 #endif
 
 /**************************************End Of File*******************************************************/
