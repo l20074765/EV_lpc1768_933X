@@ -31,6 +31,8 @@ typedef struct _timer_st_{
 	unsigned short usr_opt;
 	unsigned short dev_msg_rpt;
 	unsigned short led_paoma;
+	unsigned short pcoin_opt;
+	unsigned short coin_opt;
 }TIMER_ST;
 extern TIMER_ST Timer;
 

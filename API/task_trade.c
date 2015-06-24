@@ -51,7 +51,7 @@ void SystemInit(void)
 	InitRtc();
 	RTCStartOrStop(1);
 	InitDisplay();
-	LED_showString("EU1.4");//显示版本号
+	LED_showString("EU1.5");//显示版本号
 	msleep(1500);	
 	LED_showString("E---");
 	InitKeyboard();//维护按键初始化
@@ -225,18 +225,8 @@ uint8 MT_checkDev(void)
 uint8 MT_checkPayout(uint32 billAmount,uint32 coinAmount)
 {
 	uint8 i;
-	#if 0
-	for(i = 0;i < HP_SUM;i++){
-		if(stHopperLevel[i].ch == 0){
-			if(i != 0){
-				if(coinAmount <= stHopperLevel[i - 1].ch){ //硬币不符兑零
-					
-					return 0;
-				}
-			}
-		}
-	}
-	#endif
+	
+
 	g_billRatio = 0;
 	g_coinRatio = 0;
 	for(i = 0; i < 8;i++){
@@ -257,14 +247,39 @@ uint8 MT_checkPayout(uint32 billAmount,uint32 coinAmount)
 			break;
 		}
 	}
+	
+	if(g_coinRatio == 0){
+		for(i = 0; i < 8;i++){
+			if(stMdb.coinRato[i].amount == 0){
+				continue;
+			}
+			if((coinAmount % stMdb.coinRato[i].amount) == 0){
+				g_coinRatio = i + 1;
+				break;
+			}
+		}
+	}
+	
 
 	
 	//print_main("bill=%d,coin=%d,minch=%d\r\n",billAmount,coinAmount,g_hpMinCh);
 	if(billAmount == 0 && coinAmount < g_hpMinCh){ //硬币比最小面值还小 无法找零
 		return 0;
+	}
 	
+	if(billAmount == 0 && Timer.pcoin_opt > 0){
+		return 0;
 	}
 
+	#if 0
+	if(billAmount == 0 && g_coinRatio == 0 && Timer.coin_opt > 0){
+		return 0;
+	}
+	#endif
+	
+	
+	
+	
 	return 1;
 }
 
@@ -328,6 +343,7 @@ void task_trade(void)
 {
 	uint8 state = 0;
 	static uint32 remainAmount = 0,curBillAmount = 0,curCoinAmount = 0;
+	static uint32 pcoinAmount = 0;
 	Q_MSG *msg;
 	state = TRADE_BEGIN;
 	disp_clear_screen();
@@ -351,7 +367,14 @@ void task_trade(void)
 				break;
 			case TRADE_BILLIN:
 				curBillAmount = MDB_getBillRecvAmount();//接收纸币
-				curCoinAmount = MDB_getCoinRecvAmount();//接收硬币
+			
+				pcoinAmount = MDB_getCoinRecvAmount();//接收硬币
+				if(pcoinAmount != curCoinAmount){
+					curCoinAmount = pcoinAmount;
+					Timer.coin_opt = 500;
+					Timer.pcoin_opt = 50;		
+				}
+				
 				remainAmount = curBillAmount + curCoinAmount;//总接收金额
 				if(remainAmount > 0){ // 有金额进入找零环节
 					LED_showAmount(remainAmount);//显示金额
@@ -381,7 +404,6 @@ void task_trade(void)
 				msg->billRatioIndex = g_billRatio;
 				msg->coinRatioIndex = g_coinRatio;
 				DEV_payoutReq(curBillAmount,curCoinAmount);//正在找零
-			
 				msg = DEV_msgRpt(DEV_PAYOUT,900000); //等待找零结果
 				if(msg->iou > 0){
 					LED_showString("####");

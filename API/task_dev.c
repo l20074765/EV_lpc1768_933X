@@ -284,8 +284,28 @@ Q_MSG *DEV_msgRpt(uint8 type,uint32 timeout)
 
 
 
-
-
+void DEV_scanRatio(void)
+{
+	uint8 i,j;
+	uint32 amount;
+	for(i = 0;i < 8;i++){
+		if(stMdb.billRato[i].amount > 0){
+			amount = 0;
+			for(j = 0;j < 8;j++){
+				if(stMdb.billRato[i].ch > 0){
+					amount += stMdb.billRato[i].ch[j] * stMdb.billRato[i].num[j];
+				}
+			}
+			if(amount != stMdb.billRato[i].amount){ //验证失败
+				stMdb.billRato[i].amount = 0;
+				for(j = 0;j < 8;j++){
+					stMdb.billRato[i].num[j] = 0;
+				}
+			}
+		}
+	}
+	
+}
 
 
 
@@ -348,7 +368,8 @@ void MT_devInit(void)
 			}
 		}
 		
-		
+		DEV_scanRatio(); //扫描 并验证 兑币比例
+
 	}
 	msleep(100);
 

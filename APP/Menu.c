@@ -814,6 +814,10 @@ uint8 MN_setRato(ST_CHANGE_RATO *rato)
 }
 
 
+
+
+
+
 /*********************************************************************************************************
 ** Function name:       MN_setCoinHighEnbale
 ** Descriptions:        设置硬币器高使能
@@ -1148,6 +1152,8 @@ uint8 MN_adminMenu(void)
 				case 3: //配置hopper通道面值
 					LED_showString("A03.0");
 					isChanged += MN_setChannel(3);
+					//hopper 有改动 扫描 兑币比例
+					//MN_scanRatio();
 					break;
 				case 4: //配置小数点
 					isChanged += MN_setPointValue(&stMdb.pointValue);

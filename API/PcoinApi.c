@@ -213,8 +213,7 @@ uint8 PCOIN_disableSerialPluse(void)
 void PCOIN_scanSerialPluse(void)
 {
 	uint8 CurStatus;
-	static uint8 PreStatus ;
-
+	static uint8 PreStatus;
 	FIO2DIR &= (~SERIALCOIN_IN);
 	CurStatus  = (uint8)GETSERIALCON_CHL();
 	switch(CurStatus)
