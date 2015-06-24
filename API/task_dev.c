@@ -305,13 +305,58 @@ void DEV_scanRatio(void)
 		}
 	}
 	
+	//硬币
+	for(i = 0;i < 8;i++){
+		if(stMdb.coinRato[i].amount > 0){
+			amount = 0;
+			for(j = 0;j < 8;j++){
+				if(stMdb.coinRato[i].ch > 0){
+					amount += stMdb.coinRato[i].ch[j] * stMdb.coinRato[i].num[j];
+				}
+			}
+			if(amount != stMdb.coinRato[i].amount){ //验证失败
+				stMdb.coinRato[i].amount = 0;
+				for(j = 0;j < 8;j++){
+					stMdb.coinRato[i].num[j] = 0;
+				}
+			}
+		}
+	}
+	
+	
 }
 
 
 
+void MT_devhopperFlush(void)
+{
+	uint8 i,j;
+	for(i = 0;i < HP_SUM;i++){
+		if(stHopperLevel[i].ch == 0){
+			print_dev("HP_min no=%d,ch=%d\r\n",i,stHopperLevel[i - 1].ch);
+			if(i > 0){
+				g_hpMinCh = stHopperLevel[i - 1].ch;
+				g_hpNo = i;
+			}
+			break;
+		}
+	}
+	
+	for(i = 0; i < 8;i++){
+		//print_dev("ratio[%d]\r\n",i);
+		for(j = 0;j < HP_SUM;j++){
+			//print_dev("ch[%d]=%d\r\n",j,stHopperLevel[j].ch);
+			stMdb.billRato[i].ch[j] = stHopperLevel[j].ch;
+			stMdb.coinRato[i].ch[j] = stHopperLevel[j].ch;
+		}
+	}
+	
+	DEV_scanRatio(); //扫描 并验证 兑币比例
+}
+
 void MT_devInit(void)
 {
-	uint8 res,type,i,j;
+	uint8 res,type,i;
 	type = MDB_getCoinAcceptor();//初始化硬币器
 	if(type == COIN_ACCEPTOR_PPLUSE){
 		LED_showString("CO--");
@@ -347,28 +392,8 @@ void MT_devInit(void)
 				}
 			}
 		}
+		MT_devhopperFlush();
 		
-		for(i = 0;i < HP_SUM;i++){
-			if(stHopperLevel[i].ch == 0){
-				print_dev("HP_min no=%d,ch=%d\r\n",i,stHopperLevel[i - 1].ch);
-				if(i > 0){
-					g_hpMinCh = stHopperLevel[i - 1].ch;
-					g_hpNo = i;
-				}
-				break;
-			}
-		}
-		
-		for(i = 0; i < 8;i++){
-			//print_dev("ratio[%d]\r\n",i);
-			for(j = 0;j < HP_SUM;j++){
-				//print_dev("ch[%d]=%d\r\n",j,stHopperLevel[j].ch);
-				stMdb.billRato[i].ch[j] = stHopperLevel[j].ch;
-				stMdb.coinRato[i].ch[j] = stHopperLevel[j].ch;
-			}
-		}
-		
-		DEV_scanRatio(); //扫描 并验证 兑币比例
 
 	}
 	msleep(100);

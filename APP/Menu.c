@@ -1157,7 +1157,9 @@ uint8 MN_adminMenu(void)
 					//hopper 有改动 扫描 兑币比例
 					//MN_scanRatio();
 					if(isChanged > 0){
+						print_menu("MENU:hopper changed...\r\n");
 						HP_init();
+						MT_devhopperFlush();
 					}
 					break;
 				case 4: //配置小数点

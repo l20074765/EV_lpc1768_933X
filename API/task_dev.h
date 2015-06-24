@@ -43,6 +43,8 @@ uint8 DEV_payoutReq(uint32 billAmount,uint32 coinAmount);
 uint8 DEV_hpPayoutReq(uint8 no,uint16 nums);
 Q_MSG *DEV_msgRpt(uint8 type,uint32 timeout);
 Q_MSG *DEV_getReqMsg(void);
+
+void MT_devhopperFlush(void);
 #endif
 
 
