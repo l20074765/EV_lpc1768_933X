@@ -1156,6 +1156,9 @@ uint8 MN_adminMenu(void)
 					isChanged += MN_setChannel(3);
 					//hopper 有改动 扫描 兑币比例
 					//MN_scanRatio();
+					if(isChanged > 0){
+						HP_init();
+					}
 					break;
 				case 4: //配置小数点
 					isChanged += MN_setPointValue(&stMdb.pointValue);
