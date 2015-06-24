@@ -417,9 +417,11 @@ uint8 MN_userMenu(void)
 
 //==============设备管理20 -39========================================
 				case 20://测试纸币器收币
+					MDB_clearRecvAmount();
 					MN_billTest();
 					break;
 				case 21://测试硬币器收币
+					MDB_clearRecvAmount();
 					MN_coinTest();
 					break;
 				case 22://测试找零总金额	
