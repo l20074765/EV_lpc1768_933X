@@ -771,13 +771,14 @@ uint8 MN_setRato(ST_CHANGE_RATO *rato)
 				else{
 					//需要验证 兑币比例合理性 
 					temp = 0;
+					#if 0
 					LED_showString("HP00");
 					rato->amount = ratio.amount;
 					for(i = 0;i < 8;i++){
 						rato->ch[i] = ratio.ch[i];
 						rato->num[i] = ratio.num[i];
 					}
-					#if 0
+					#else
 					for(i = 0;i < 8;i++){
 						temp += ratio.ch[i] * ratio.num[i];
 					}

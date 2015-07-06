@@ -351,7 +351,7 @@ void MT_devhopperFlush(void)
 		}
 	}
 	
-	//DEV_scanRatio(); //扫描 并验证 兑币比例
+	DEV_scanRatio(); //扫描 并验证 兑币比例
 }
 
 void MT_devInit(void)
