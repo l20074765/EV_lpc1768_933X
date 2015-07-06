@@ -32,6 +32,7 @@ typedef struct _st_mdb_{
 	uint8 coin_type;
 	uint8 highEnable;
 	uint8 pointValue; 
+	//uint8 is
 	ST_CHANGE_RATO billRato[8];
 	ST_CHANGE_RATO coinRato[8];
 	

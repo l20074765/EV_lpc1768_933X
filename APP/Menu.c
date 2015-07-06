@@ -728,7 +728,7 @@ uint8 MN_setRato(ST_CHANGE_RATO *rato)
 			case '1': case '2': case '3': case '4': case '5':case '6':case '7':case '8':case '9':case '0':
 				if(isEdit){
 					temp = temp * 10 + (key - '0');
-					if(temp > 99){
+					if(index != 0 && temp > 99){
 						temp = 0;
 					}
 					toFlush = 1;
@@ -771,6 +771,13 @@ uint8 MN_setRato(ST_CHANGE_RATO *rato)
 				else{
 					//需要验证 兑币比例合理性 
 					temp = 0;
+					LED_showString("HP00");
+					rato->amount = ratio.amount;
+					for(i = 0;i < 8;i++){
+						rato->ch[i] = ratio.ch[i];
+						rato->num[i] = ratio.num[i];
+					}
+					#if 0
 					for(i = 0;i < 8;i++){
 						temp += ratio.ch[i] * ratio.num[i];
 					}
@@ -786,7 +793,7 @@ uint8 MN_setRato(ST_CHANGE_RATO *rato)
 						LED_showString("HPEE");
 						msleep(1000);
 					}
-					
+					#endif
 					returnFlag = 1;
 				}
 				break;
