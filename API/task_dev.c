@@ -121,7 +121,7 @@ uint8 DEV_payoutRpt(Q_MSG *msg)
 {
 	uint8 i,n;
 	uint32 amount = 0,changed = 0,remain = 0;
-	uint16 changedCount;
+	uint16 changedCount,payCount,remainPayCount;
 	uint16 hp[HP_SUM] = {0};
 	
 	ST_CHANGE_RATO *ratio = NULL;
@@ -134,67 +134,89 @@ uint8 DEV_payoutRpt(Q_MSG *msg)
 	
 	changed = 0;
 	memset(hp,0,sizeof(uint16) * HP_SUM);
-	
+	remainPayCount = 0;
 	if(msg->billRatioIndex > 0){ //有纸币兑币比例
 		ratio = &stMdb.billRato[msg->billRatioIndex - 1];
 		if(ratio->amount > 0){
 			n = msg->billAmount / ratio->amount;
 			for(i = 0;i < 8;i++){
-				changedCount = HP_payout_by_level(i,ratio->num[i] * n,hp);
-				changed += changedCount * ratio->ch[i];
-				
+				payCount = ratio->num[i] * n;
+				if(payCount > 0){
+					changedCount = HP_payout_by_level(i,payCount,hp);
+					if(changedCount < payCount && g_hpMinCh > 0){
+						remainPayCount +=  (stHopperLevel[i].ch / g_hpMinCh) * (payCount - changedCount);
+					}
+					changed += changedCount * ratio->ch[i];
+				}
 			}
 		}
 		
+		if(remainPayCount > 0 && g_hpNo > 0){
+			changedCount = HP_payout_by_level(g_hpNo - 1,remainPayCount,hp);
+			changed += changedCount * g_hpMinCh;
+			if(changedCount < remainPayCount){
+				dev_msg_r[dev_in_r].iou = (remainPayCount - changedCount) * g_hpMinCh;
+			}
+			else{
+				dev_msg_r[dev_in_r].iou = 0;
+			}
+		}
+		else{
+			dev_msg_r[dev_in_r].iou = 0;
+		}
 		
 	}
-	
-	if(msg->coinRatioIndex > 0){
+	else if(msg->coinRatioIndex > 0){
 		ratio = &stMdb.coinRato[msg->coinRatioIndex - 1];
 		if(ratio->amount > 0){
 			n = msg->coinAmount / ratio->amount;
 			for(i = 0;i < 8;i++){
-				changedCount = HP_payout_by_level(i,ratio->num[i] * n,hp);
-				changed += changedCount * ratio->ch[i];
+				payCount = ratio->num[i] * n;
+				if(payCount > 0){
+					changedCount = HP_payout_by_level(i,ratio->num[i] * n,hp);
+					if(changedCount < payCount && g_hpMinCh > 0){
+						remainPayCount +=  (stHopperLevel[i].ch / g_hpMinCh) * (payCount - changedCount);
+					}
+					changed += changedCount * ratio->ch[i];
+				}
+				
 			}
+		}
+		
+		if(remainPayCount > 0 && g_hpNo > 0){
+			changedCount = HP_payout_by_level(g_hpNo - 1,remainPayCount,hp);
+			changed += changedCount * g_hpMinCh;
+			if(changedCount < remainPayCount){
+				dev_msg_r[dev_in_r].iou = (remainPayCount - changedCount) * g_hpMinCh;
+			}
+			else{
+				dev_msg_r[dev_in_r].iou = 0;
+			}
+		}
+		else{
+			dev_msg_r[dev_in_r].iou = 0;
+		}
+	}
+	else{
+		amount = msg->billAmount + msg->coinAmount;
+		changed += HP_payout(amount - changed,hp);
+		if(amount > changed){
+			remain = amount - changed;
+			dev_msg_r[dev_in_r].iou = remain;
+		}
+		else{
+			dev_msg_r[dev_in_r].iou = 0;
 		}
 	}
 	
-	//兑零比例找完  需要再次查看 是否还需要找零
-	amount = msg->billAmount + msg->coinAmount;
-	if(amount >  changed){
-		changed += HP_payout(amount - changed,hp);
-		
-	}
-	
-	print_dev("DEV_payoutRpt:amount=%d,changed=%d\r\n",amount,changed);
-	
-	print_dev("DEV_payoutRpt:remain=%d\r\n",remain);
 	
 	dev_msg_r[dev_in_r].billAmount = msg->billAmount;
 	dev_msg_r[dev_in_r].coinAmount = msg->coinAmount;
 	dev_msg_r[dev_in_r].coinChanged = changed;
-	print_dev("\r\n");
 	for(i = 0;i < HP_SUM;i++){
-		print_dev("hp[%d] = %d\r\n",i,hp[i]);
 		dev_msg_r[dev_in_r].hp[i] = hp[i];
 	}
-	print_dev("\r\n");
-	if(amount > changed){
-		remain = amount - changed;
-		dev_msg_r[dev_in_r].iou = remain;
-		#if 0
-		if(remain < g_hpMinCh){ //无法找零
-			dev_msg_r[dev_in_r].iou = 0;
-		}
-		else{
-			dev_msg_r[dev_in_r].iou = remain;
-		}
-		#endif
-	}
-	else{
-		dev_msg_r[dev_in_r].iou = 0;
-	}
+	
 	//扣款 扣完
 	remain = MDB_billCost(msg->billAmount + msg->coinAmount);
 	print_dev("DEV_payoutRpt:remain=%d\r\n",remain);
