@@ -468,6 +468,11 @@
               <FileType>1</FileType>
               <FilePath>.\API\task_trade.c</FilePath>
             </File>
+            <File>
+              <FileName>cashlessApi.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\API\cashlessApi.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
