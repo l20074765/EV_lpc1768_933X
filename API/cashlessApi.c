@@ -16,10 +16,8 @@
 #define MDB_CARD_SETUP			0x01   		//初始化
 #define MDB_CARD_VEND_REQUEST	0x03   		//请求
 #define MDB_CARD_POLL			0x02				//轮训
-#define MDB_BILL_BILL_TYPE	0x34   		//
-#define MDB_BILL_ESCROW			0x35  		//
-#define MDB_BILL_STACKER		0x36  
-#define MDB_BILL_EXPANSION 	0x37  		//扩展命令
+#define MDB_CARD_ENBALE			0x04   		//
+
 
 
 
@@ -293,8 +291,8 @@ static uint8 card_vend_fail(void)
 
 
 /*********************************************************************************************************
-** Function name:       card_vend_fail
-** Descriptions:        读卡器交易失败
+** Function name:       card_vend_complete
+** Descriptions:        读卡器交易完成
 ** input parameters:    无
 ** output parameters:   无
 ** Returned value:      0超时 ,1成功 2数据错误
@@ -310,6 +308,65 @@ static uint8 card_vend_complete(void)
 	return res;
 }
 
+
+/*********************************************************************************************************
+** Function name:       card_cash_sale
+** Descriptions:        现金详细交易记录都提交给读卡器
+** input parameters:    无
+** output parameters:   无
+** Returned value:      0超时 ,1成功 2数据错误
+*********************************************************************************************************/
+static uint8 card_cash_sale(uint16 amount)
+{
+	uint8 res,addr,buf[10] = {0},i;
+	uint8 temp,ch;
+	addr = MDB_CARD_ADDR + MDB_CARD_VEND_REQUEST;
+	buf[0] = 0x05;
+	buf[1] = HUINT16(amount);
+	buf[2] = LUINT16(amount);
+	buf[3] = 0x00;
+	buf[4] = 0x01;
+
+	res = card_send(addr,buf,5); //setup
+	if(res != 1){return 0;}
+	return res;
+}
+
+
+/*********************************************************************************************************
+** Function name:       card_enable
+** Descriptions:        使能控制
+** input parameters:    无
+** output parameters:   无
+** Returned value:      0超时 ,1成功 2数据错误
+*********************************************************************************************************/
+static uint8 card_enable(uint8 en)
+{
+	uint8 res,addr,buf[10] = {0},i;
+	uint8 temp,ch;
+	addr = MDB_CARD_ADDR + MDB_CARD_ENBALE;
+	buf[0] = (en == 0) ? 0 : 1;	
+	res = card_send(addr,buf,1); //setup
+	if(res != 1){return 0;}
+	else{
+		return res;
+	}
+}
+
+
+
+
+/*********************************************************************************************************
+** Function name:       cardTaskPoll
+** Descriptions:        读卡器设备轮训
+** input parameters:    无
+** output parameters: 
+** Returned value:      
+*********************************************************************************************************/
+uint8 cardTaskPoll(void)
+{
+	
+}
 
 
 
