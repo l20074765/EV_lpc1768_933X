@@ -84,6 +84,9 @@ unsigned char FM_readFromFlash(void)
 		}
 	}
 	
+	
+	stMdb.card_type = buf[index++];
+	
 	Trace("ReadFlash:size=%d\r\n",index);
 	return 1;
 }
@@ -137,7 +140,7 @@ unsigned char FM_writeToFlash(void)
 		}
 	}
 	
-	
+	buf[index++] = stMdb.card_type;
 
 	saveFlash(0x00,buf,index);
 	return 1;

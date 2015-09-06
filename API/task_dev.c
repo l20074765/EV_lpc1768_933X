@@ -455,6 +455,9 @@ void task_dev(void *pdata)
 			HP_task();
 		}	
 		
+		if(MDB_getCardType() == CARD_MDB){
+			cardTaskPoll();
+		}
 		DEV_reqPoll();
 		msleep(80);
 	}

@@ -20,6 +20,10 @@
 #define     COIN_DISPENSER_MDB		2
 
 
+#define 	CARD_NONE				0
+#define     CARD_MDB				2
+
+
 typedef struct {
 	uint32 amount; 	//要兑币的金额
 	uint8  num[8]; 	//8个通道兑换枚数
@@ -31,6 +35,7 @@ typedef struct _st_mdb_{
 	uint8 bill_type;
 	uint8 coin_type;
 	uint8 highEnable;
+	uint8 card_type;
 	uint8 pointValue; 
 	//uint8 is
 	ST_CHANGE_RATO billRato[8];
@@ -66,6 +71,9 @@ uint32 MDB_valueToCents(uint32 value);
 uint32 MDB_billCost(uint32 amount);
 uint32 MDB_coinCost(uint32 amount);
 void MDB_clearRecvAmount(void);
+
+uint8 MDB_getCardType(void);
+void MDB_setCardType(const uint8 type);
 #endif
 
 /**************************************End Of File*******************************************************/

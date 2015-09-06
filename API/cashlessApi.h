@@ -43,7 +43,7 @@ typedef struct{
 extern MDB_CARD stCard;
 
 
-
+uint8 cardTaskPoll(void);
 
 #endif
 

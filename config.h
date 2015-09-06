@@ -74,6 +74,7 @@ extern "C" {
 #include ".\API\coinApi.h"
 #include ".\API\billApi.h"
 #include ".\API\PcoinApi.h"
+#include ".\API\cashlessApi.h"
 #ifdef __cplusplus
 	}
 #endif 

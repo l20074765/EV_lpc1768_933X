@@ -99,6 +99,17 @@ uint8 MDB_getCoinDispenser(void)
 }
 
 
+uint8 MDB_getCardType(void)
+{
+	return stMdb.card_type;
+}
+
+void MDB_setCardType(const uint8 type)
+{
+	stMdb.card_type = type;
+}
+
+
 
 uint8 MDB_billEnable(uint8 en)
 {
