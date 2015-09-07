@@ -1305,6 +1305,8 @@ uint8 MN_adminMenu(void)
 					LED_showString("A06.0");
 					isChanged += MN_setBillRato(6,stMdb.coinRato);
 					break;
+				case 7: //ÅäÖÃÖ½±ÒÆ÷
+					break;
 				case 8: //ÅäÖÃÓ²±ÒÆ÷ÀàĞÍ
 					isChanged += MN_setCoinType(8);
 					break;

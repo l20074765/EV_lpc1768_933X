@@ -437,6 +437,12 @@ void MT_devInit(void)
 			msleep(1000);
 		}
 	}
+	
+	if(MDB_getCardType() == CARD_MDB){
+		memset((void *)&stCard,0,sizeof(stCard));
+		stCard.status = CARD_MALFUNCTION_ERROR;
+		TIMER_SET(Timer.card_reset,15000);
+	}
 }
 
 
@@ -455,11 +461,6 @@ void task_dev(void *pdata)
 	
 	/*调试接口手段------------------------------------------*/
 	
-	MDB_setCardType(CARD_MDB);
-	memset((void *)&stCard,0,sizeof(stCard));
-	stCard.status = CARD_MALFUNCTION_ERROR;
-	TIMER_SET(Timer.card_reset,15000);
-	stMdb.bill_type = 0;
 	
 	/*------------------------End-----------------------------*/
 	
