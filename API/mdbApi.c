@@ -121,6 +121,15 @@ uint8 MDB_billEnable(uint8 en)
 }
 
 
+uint8 MDB_cardEnable(uint8 en)
+{
+	if(MDB_getCardType() == CARD_MDB){
+		//card_enable(en);
+		stCard.setEnable = en;
+	}
+	return 1;
+}
+
 uint8 MDB_coinEnable(uint8 en)
 {
 	uint8 res;

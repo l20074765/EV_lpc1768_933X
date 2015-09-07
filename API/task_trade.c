@@ -21,7 +21,7 @@
 #define TRADE_BILLIN					(0x05)				//检测是否有纸币或硬币进入
 #define TRADE_FAULT						(0x17)				//故障
 
-
+#define VERSION		"EU1.6"
 
 
 static volatile uint8 g_enterMenu = 0;//维护模式标志
@@ -51,7 +51,7 @@ void SystemInit(void)
 	InitRtc();
 	RTCStartOrStop(1);
 	InitDisplay();
-	LED_showString("EU1.5");//显示版本号
+	LED_showString(VERSION);//显示版本号
 	msleep(1500);	
 	LED_showString("E---");
 	InitKeyboard();//维护按键初始化
@@ -214,6 +214,16 @@ uint8 MT_checkDev(void)
 
 
 
+uint8 MT_checkCardPayout(uint32 amount)
+{
+	//print_main("bill=%d,coin=%d,minch=%d\r\n",billAmount,coinAmount,g_hpMinCh);
+	if(amount < g_hpMinCh){ //硬币比最小面值还小 无法找零
+		return 0;
+	}
+	g_billRatio = 0;
+	g_coinRatio = 0;
+	return 1;
+}
 
 
 /*********************************************************************************************************
@@ -292,6 +302,7 @@ static void MT_saveTradeLog(Q_MSG *msg)
 	uint8 i;
 	stLog.billRecv += msg->billAmount;
 	stLog.coinRecv += msg->coinAmount;
+	stLog.cardRecv += msg->cardAmount;
 	stLog.iou += msg->iou;
 	stLog.coinChanged += msg->coinChanged;
 	stLog.lastIou = msg->iou;
@@ -343,7 +354,7 @@ static void MT_ledPaomaDisplay(uint8 init)
 void task_trade(void)
 {
 	uint8 state = 0;
-	static uint32 remainAmount = 0,curBillAmount = 0,curCoinAmount = 0;
+	static uint32 remainAmount = 0,curBillAmount = 0,curCoinAmount = 0,curCardAmount = 0;
 	static uint32 pcoinAmount = 0;
 	Q_MSG *msg;
 	state = TRADE_BEGIN;
@@ -376,13 +387,22 @@ void task_trade(void)
 					Timer.pcoin_opt = 50;		
 				}
 				
-				remainAmount = curBillAmount + curCoinAmount;//总接收金额
+				curCardAmount = stCard.recvAmount;
+				
+				remainAmount = curBillAmount + curCoinAmount + curCardAmount;//总接收金额
 				if(remainAmount > 0){ // 有金额进入找零环节
 					LED_showAmount(remainAmount);//显示金额
 					print_main("remainAmount1=%d\r\n",remainAmount);
+					
+					if(MT_checkCardPayout(curCardAmount) == 1){
+						state = TRADE_HPOUT;break;
+					}
+					
 					if(MT_checkPayout(curBillAmount,curCoinAmount) > 0){ //检查是否可找零
 						state = TRADE_HPOUT;
 					}
+					
+					
 				}
 				else{ //空闲状态 
 					MT_checkMenu(state); //检测按键
@@ -402,9 +422,17 @@ void task_trade(void)
 				break;
 			case TRADE_HPOUT://找零
 				msg = DEV_getReqMsg();
-				msg->billRatioIndex = g_billRatio;
-				msg->coinRatioIndex = g_coinRatio;
-				DEV_payoutReq(curBillAmount,curCoinAmount);//正在找零
+				if(curCardAmount > 0){
+					msg->billRatioIndex = 0;
+					msg->coinRatioIndex = 0;
+					DEV_payoutCardReq(curCardAmount);
+				}
+				else{
+					msg->billRatioIndex = g_billRatio;
+					msg->coinRatioIndex = g_coinRatio;
+					DEV_payoutReq(curBillAmount,curCoinAmount);//正在找零
+				}
+				
 				msg = DEV_msgRpt(DEV_PAYOUT,900000); //等待找零结果
 				if(msg->iou > 0){
 					LED_showString("####");

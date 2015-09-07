@@ -897,6 +897,128 @@ uint8 MN_setCoinHighEnbale(uint8 type)
 	
 }
 
+uint8 MN_setCardCost(uint8 type)
+{
+	uint8 isChanged = 0,isEdit = 0;
+	uint8 key,topReturnFlag = 0;
+	uint8 topFlush = 1;
+	uint32 cost,costm;
+	costm = MDB_valueFromCents(stMdb.card_cost);
+	cost = costm;
+	while(1){
+		if(topFlush == 1){
+			topFlush = 0;
+			LED_showAmount(MDB_valueToCents(cost));
+		}
+		key = MN_getKey();
+		switch(key){
+			case '1': case '2': case '3': case '4': case '5':case '6':case '7':case '8':case '9':case '0':
+				if(isEdit){
+					cost = cost * 10 + key - '0';
+					topFlush =1;
+				}
+				break;
+			case 'E':
+				if(isEdit){
+					isEdit = 0;
+					stMdb.card_cost = MDB_valueToCents(cost);
+					isChanged = 1;
+					topFlush = 1;
+					LED_showString("####");
+					msleep(200);	
+					FM_writeToFlash();
+				}
+				else{
+					LED_showString("####");
+					msleep(200);
+					cost = 0;
+					topFlush = 1;
+					isEdit = 1;
+				}
+				break;
+			case 'C':
+				if(isEdit > 0){
+					isEdit = 0;
+					topFlush = 1;
+				}
+				else{
+					topReturnFlag = 1;
+				}
+				break;
+			
+			default:
+				break;
+		}
+		
+		
+		if(topReturnFlag > 0){
+			return (isChanged > 0 ? 1 : 0);
+		}
+		msleep(50);
+	}
+}
+
+uint8 MN_setCardType(uint8 type)
+{
+	uint8 isChanged = 0,isEdit = 0;
+	uint8 key,topReturnFlag = 0;
+	uint8 topFlush = 1;
+	uint8 card_type;
+	
+	while(1){
+		if(topFlush == 1){
+			topFlush = 0;
+			card_type = MDB_getCardType();
+			LED_show("CA-%d",card_type);
+		}
+		key = MN_getKey();
+		switch(key){
+			case '0':case '1':case '2':case '3':
+				if(isEdit){
+					card_type = key - '0';
+					LED_show("CA-%d",card_type);
+				}
+				break;
+			case 'E':
+				if(isEdit){
+					isEdit = 0;
+					MDB_setCardType(card_type);
+					isChanged = 1;
+					topFlush = 1;
+					LED_showString("####");
+					msleep(200);	
+					FM_writeToFlash();
+				}
+				else{
+					LED_showString("####");
+					msleep(200);
+					LED_show("CA-0");
+					isEdit = 1;
+				}
+				break;
+			case 'C':
+				if(isEdit > 0){
+					isEdit = 0;
+					topFlush = 1;
+				}
+				else{
+					topReturnFlag = 1;
+				}
+				break;
+			
+			default:
+				break;
+		}
+		
+		
+		if(topReturnFlag > 0){
+			return (isChanged > 0 ? 1 : 0);
+		}
+		msleep(50);
+	}
+}
+
+
 /*********************************************************************************************************
 ** Function name:       MN_setCoinType
 ** Descriptions:        …Ë÷√”≤±“∆˜¿‡–Õ
@@ -1186,6 +1308,12 @@ uint8 MN_adminMenu(void)
 					break;
 				case 9:
 					isChanged += MN_setCoinHighEnbale(9);
+					break;
+				case 10:
+					isChanged += MN_setCardType(10);
+					break;
+				case 11:
+					isChanged += MN_setCardCost(11);
 					break;
 				default:break;
 			}

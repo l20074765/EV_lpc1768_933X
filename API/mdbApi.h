@@ -37,6 +37,7 @@ typedef struct _st_mdb_{
 	uint8 highEnable;
 	uint8 card_type;
 	uint8 pointValue; 
+	uint32 card_cost;
 	//uint8 is
 	ST_CHANGE_RATO billRato[8];
 	ST_CHANGE_RATO coinRato[8];
@@ -58,6 +59,7 @@ uint8 MDB_getCoinDispenser(void);
 void MDB_setCoinDispenser(uint8 type);
 uint8 MDB_coinEnable(uint8 en);
 uint8 MDB_billEnable(uint8 en);
+uint8 MDB_cardEnable(uint8 en);
 uint32 MDB_getBillRecvAmount(void);
 uint32 MDB_getCoinRecvAmount(void);
 uint8 MDB_getBillStatus(void);

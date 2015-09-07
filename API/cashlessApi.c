@@ -27,6 +27,7 @@ static uint8 xdata recvbuf[36] = {0};
 static uint8 xdata recvlen = 0;
 
 
+
 MDB_CARD stCard;
 
 
@@ -75,7 +76,7 @@ static uint8 card_setup(void)
 	addr = MDB_CARD_ADDR + MDB_CARD_SETUP;
 	
 	buf[0] = 0x00;//Configuration data
-	buf[1] = 0x01;//VMC Feature Level
+	buf[1] = 0x01;//VMC Feature Level  level2
 	buf[2] = 0x00;//Columns on Display
 	buf[3] = 0x00;//Rows on Display
 	buf[4] = 0x00;//Display Information	
@@ -120,7 +121,7 @@ static uint8 card_setup(void)
 *********************************************************************************************************/
 static uint8 card_setup_price(void)
 {
-	uint8 res,addr,buf[10] = {0},i;
+	uint8 res,addr,buf[10] = {0};
 	addr = MDB_CARD_ADDR + MDB_CARD_SETUP;
 	
 	buf[0] = 0x01;//Max / Min prices
@@ -154,7 +155,7 @@ static uint8 card_setup_price(void)
 static uint8 card_poll(CARD_POLL *poll)
 {
 	
-	uint8 res,addr,buf[10] = {0},i;
+	uint8 res,addr,i;
 	uint8 temp,ch;
 	addr = MDB_CARD_ADDR + MDB_CARD_POLL;
 	res = card_send(addr,NULL,0); //setup
@@ -174,6 +175,7 @@ static uint8 card_poll(CARD_POLL *poll)
 				ch = recvbuf[i++]; //Decimal Places
 				ch = recvbuf[i++]; //Application Maximum Response Time
 				ch = recvbuf[i++]; //Miscellaneous Options
+				ch = ch;
 				break;
 			
 			case 0x02: //DISPLAY REQUEST
@@ -228,8 +230,8 @@ static uint8 card_poll(CARD_POLL *poll)
 				i+= 1;
 				break;
 				
-			case 0x0B:
-				
+			case 0x0B: //指令序列错误
+				poll->s |= CARD_CMD_ERR;
 				break;
 			
 			default:i = recvlen;break;
@@ -250,8 +252,7 @@ static uint8 card_poll(CARD_POLL *poll)
 *********************************************************************************************************/
 static uint8 card_vend_request(uint16 amount)
 {
-	uint8 res,addr,buf[10] = {0},i;
-	uint8 temp,ch;
+	uint8 res,addr,buf[10] = {0};
 	addr = MDB_CARD_ADDR + MDB_CARD_VEND_REQUEST;
 	
 	buf[0] = 0x00;//VEND REQUEST
@@ -283,8 +284,7 @@ static uint8 card_vend_request(uint16 amount)
 *********************************************************************************************************/
 static uint8 card_vend_cancel(void)
 {
-	uint8 res,addr,buf[10] = {0},i;
-	uint8 temp,ch;
+	uint8 res,addr,buf[10] = {0};
 	addr = MDB_CARD_ADDR + MDB_CARD_VEND_REQUEST;
 	
 	buf[0] = 0x01;
@@ -304,8 +304,7 @@ static uint8 card_vend_cancel(void)
 *********************************************************************************************************/
 static uint8 card_vend_success(void)
 {
-	uint8 res,addr,buf[10] = {0},i;
-	uint8 temp,ch;
+	uint8 res,addr,buf[10] = {0};
 	addr = MDB_CARD_ADDR + MDB_CARD_VEND_REQUEST;
 	
 	buf[0] = 0x02;
@@ -327,8 +326,7 @@ static uint8 card_vend_success(void)
 *********************************************************************************************************/
 static uint8 card_vend_fail(void)
 {
-	uint8 res,addr,buf[10] = {0},i;
-	uint8 temp,ch;
+	uint8 res,addr,buf[10] = {0};
 	addr = MDB_CARD_ADDR + MDB_CARD_VEND_REQUEST;
 	
 	buf[0] = 0x03;
@@ -347,8 +345,7 @@ static uint8 card_vend_fail(void)
 *********************************************************************************************************/
 static uint8 card_vend_complete(void)
 {
-	uint8 res,addr,buf[10] = {0},i;
-	uint8 temp,ch;
+	uint8 res,addr,buf[10] = {0};
 	addr = MDB_CARD_ADDR + MDB_CARD_VEND_REQUEST;
 	buf[0] = 0x04;
 	res = card_send(addr,buf,1); //setup
@@ -366,8 +363,7 @@ static uint8 card_vend_complete(void)
 *********************************************************************************************************/
 static uint8 card_cash_sale(uint16 amount)
 {
-	uint8 res,addr,buf[10] = {0},i;
-	uint8 temp,ch;
+	uint8 res,addr,buf[10] = {0};
 	addr = MDB_CARD_ADDR + MDB_CARD_VEND_REQUEST;
 	buf[0] = 0x05;
 	buf[1] = HUINT16(amount);
@@ -388,15 +384,15 @@ static uint8 card_cash_sale(uint16 amount)
 ** output parameters:   无
 ** Returned value:      0超时 ,1成功 2数据错误
 *********************************************************************************************************/
-static uint8 card_enable(uint8 en)
+uint8 card_enable(uint8 en)
 {
-	uint8 res,addr,buf[10] = {0},i;
-	uint8 temp,ch;
+	uint8 res,addr,buf[10] = {0};
 	addr = MDB_CARD_ADDR + MDB_CARD_ENBALE;
 	buf[0] = (en == 0) ? 0 : 1;	
 	res = card_send(addr,buf,1); //setup
 	if(res != 1){return 0;}
 	else{
+		stCard.enabled = en;
 		return res;
 	}
 }
@@ -416,16 +412,17 @@ static uint8 card_init(void)
 			print_card("card_poll:CARD_JUST_RESET\r\n");
 			break;
 		}
-		msleep(200);
+		msleep(150);
 	}
 	
-	res = card_setup();msleep(200);
+	res = card_setup();msleep(150);
+	card_poll(&poll);msleep(150);
 	print_card("card_setup:res = %d\r\n",res);
-	res = card_setup_price();msleep(200);
+	res = card_setup_price();msleep(150);
+	card_poll(&poll);msleep(150);
 	print_card("card_setup_price:res = %d\r\n",res);
 	res = card_enable(1);
 	print_card("card_enable:res = %d\r\n",res);
-	
 	return res;
 }
 
@@ -440,7 +437,7 @@ static uint8 card_init(void)
 *********************************************************************************************************/
 uint8 cardTaskPoll(void)
 {
-	uint8 i,key,rcx;
+	uint8 i;
 	CARD_POLL poll;
 	uint8 res = 0;
 	if(stCard.status & CARD_MALFUNCTION_ERROR){
@@ -459,14 +456,14 @@ uint8 cardTaskPoll(void)
 	
 	if(poll.s & CARD_BEGIN_SESSION){ //交易开始
 		print_card("CARD_BEGIN_SESSION: remainAmount=%d\r\n",poll.recvAmount);
-		if(stCard.cost == 0){ //没有扣款 停止交易
+		if(stMdb.card_cost == 0 && stCard.recvAmount == 0){ //没有扣款 且没有正在处理的请求 停止交易
 			msleep(150);
 			card_vend_complete();
 		}
 		else{
-			print_card("Start vend request:cost = %d\r\n",stCard.cost);
+			print_card("Start vend request:cost = %d\r\n",stMdb.card_cost);
 			msleep(150);
-			res = card_vend_request(stCard.cost / stCard.scale);
+			res = card_vend_request(stMdb.card_cost / stCard.scale);
 			if(res == 1){
 				stCard.tradeStatus = CARD_TRADE_REQ;
 				print_card("card_vend_request:suc_________\r\n");
@@ -479,21 +476,28 @@ uint8 cardTaskPoll(void)
 				card_vend_complete();
 				print_card("card_vend_request:fail.......\r\n");
 			}
-			stCard.cost = 0;
 		}
 	}
 	else if(poll.s & CARD_VEND_APPROVED){ //卡金额足够 允许交易	
 		print_card("CARD_VEND_APPROVED:suc_________\r\n");
-		#if 0
+		for(i = 0;i < 10;i++){
+			msleep(150);
+			card_poll(&poll);
+			if(poll.s & CARD_SESSION_CANCEL_REQUEST){
+				msleep(150);
+				card_vend_complete();
+				return 0;
+			}
+		}
 		msleep(150);
 		res = card_vend_success();
 		if(res == 1){ //扣款成功
 			stCard.tradeStatus = CARD_TRADE_SUC;
+			stCard.recvAmount = stMdb.card_cost * 100;
 			print_card("cost suc........!\r\n\r\n");
 		}
 		msleep(150);
 		card_vend_complete();
-		#endif
 	}
 	else if(poll.s & CARD_VEND_DENIED){ //卡 金额不够 拒绝交易
 		msleep(150);
@@ -507,47 +511,16 @@ uint8 cardTaskPoll(void)
 	else if(poll.s & CARD_END_SESSION){
 		
 	}
-	
-	
-	
-	
-	
-
-	rcx = 10;
-	while(rcx--){
-		msleep(10);
-		key = ReadKeyValue();
-		if(key != 0x00){
-			if(key == '1'){
-				stCard.cost = 1; //10分
-				print_card("stCard.cost = 1;\r\n");
-			}
-			else if(key == '2'){
-				stCard.status |= CARD_MALFUNCTION_ERROR;
-			}
-			else if(key == '3'){
-				msleep(150);
-				res = card_vend_success();
-				if(res == 1){ //扣款成功
-					stCard.tradeStatus = CARD_TRADE_SUC;
-					print_card("cost suc........!\r\n\r\n");
-				}
-				msleep(150);
-				card_vend_complete();
-			}
-			else if(key == '4'){
-				msleep(150);
-				card_vend_fail();
-				msleep(150);
-				card_vend_complete();
-				
-			}
-			msleep(100);
-			break;
-		}
+	else if(poll.s & CARD_MALFUNCTION_ERROR){
+		stCard.status |= CARD_MALFUNCTION_ERROR;
+	}
+	else if(poll.s & CARD_CMD_ERR){
+		stCard.status |= CARD_MALFUNCTION_ERROR;
 	}
 	
-	
+	if(stCard.setEnable != stCard.enabled){
+		card_enable(stCard.setEnable);
+	}
 	return 1;
 }
 

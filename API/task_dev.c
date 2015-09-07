@@ -98,6 +98,10 @@ uint8 DEV_enableRpt(Q_MSG *msg)
 		MDB_coinEnable(msg->opt);
 	}
 	
+	if(msg->obj & OBJ_CARD){
+		MDB_cardEnable(msg->opt);
+	}
+	
 	return err;
 	
 }
@@ -107,6 +111,12 @@ Q_MSG *DEV_getReqMsg(void)
 {
 	return &dev_msg_s[dev_in_s];
 	
+}
+
+uint8 DEV_payoutCardReq(uint32 cardAmount)
+{
+	dev_msg_s[dev_in_s].cardAmount = cardAmount;
+	return DEV_msg_req(DEV_PAYOUT);
 }
 
 uint8 DEV_payoutReq(uint32 billAmount,uint32 coinAmount)
@@ -131,7 +141,7 @@ uint8 DEV_payoutRpt(Q_MSG *msg)
 	
 	MDB_billEnable(0);
 	MDB_coinEnable(0);
-	
+	MDB_cardEnable(0);
 	changed = 0;
 	memset(hp,0,sizeof(uint16) * HP_SUM);
 	
@@ -161,7 +171,7 @@ uint8 DEV_payoutRpt(Q_MSG *msg)
 	}
 	
 	//兑零比例找完  需要再次查看 是否还需要找零
-	amount = msg->billAmount + msg->coinAmount;
+	amount = msg->billAmount + msg->coinAmount + msg->cardAmount;
 	if(amount >  changed){
 		changed += HP_payout(amount - changed,hp);
 		
@@ -173,7 +183,9 @@ uint8 DEV_payoutRpt(Q_MSG *msg)
 	
 	dev_msg_r[dev_in_r].billAmount = msg->billAmount;
 	dev_msg_r[dev_in_r].coinAmount = msg->coinAmount;
+	dev_msg_r[dev_in_r].cardAmount = msg->cardAmount;
 	dev_msg_r[dev_in_r].coinChanged = changed;
+	
 	print_dev("\r\n");
 	for(i = 0;i < HP_SUM;i++){
 		print_dev("hp[%d] = %d\r\n",i,hp[i]);
@@ -196,10 +208,14 @@ uint8 DEV_payoutRpt(Q_MSG *msg)
 		dev_msg_r[dev_in_r].iou = 0;
 	}
 	//扣款 扣完
-	remain = MDB_billCost(msg->billAmount + msg->coinAmount);
-	print_dev("DEV_payoutRpt:remain=%d\r\n",remain);
-	remain = MDB_coinCost(remain);
-	
+	if(msg->billAmount > 0 || msg->coinAmount > 0){
+		remain = MDB_billCost(msg->billAmount + msg->coinAmount);
+		print_dev("DEV_payoutRpt:remain=%d\r\n",remain);
+		remain = MDB_coinCost(remain);
+	}
+	if(msg->cardAmount > 0){ //读卡器模拟扣款
+		stCard.recvAmount = 0;
+	}
 	
 	return DEV_msg_rpt(DEV_PAYOUT);
 }
@@ -440,11 +456,11 @@ void task_dev(void *pdata)
 	/*调试接口手段------------------------------------------*/
 	
 	MDB_setCardType(CARD_MDB);
-	stMdb.bill_type = 0;
-	stMdb.coin_type = 0;
 	memset((void *)&stCard,0,sizeof(stCard));
 	stCard.status = CARD_MALFUNCTION_ERROR;
-	TIMER_SET(Timer.card_reset,10000);
+	TIMER_SET(Timer.card_reset,15000);
+	stMdb.bill_type = 0;
+	
 	/*------------------------End-----------------------------*/
 	
 	MT_devInit();

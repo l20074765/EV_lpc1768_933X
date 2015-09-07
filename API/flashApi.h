@@ -30,6 +30,7 @@
 typedef struct {
 	uint32 billRecv;
 	uint32 coinRecv;
+	uint32 cardRecv;
 	uint32 billChanged;
 	uint32 coinChanged;
 	uint32 iou;

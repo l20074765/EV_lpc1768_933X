@@ -11,7 +11,7 @@
 #define CARD_END_SESSION				0x0020UL   //结束本session,返回空闲使能状态	
 #define CARD_MALFUNCTION_ERROR			0x0040UL	//故障
 #define CARD_DISABLE					0x0080UL	//禁能
-
+#define CARD_CMD_ERR					0x0100UL	//命令错误
 
 #define CARD_TRADE_IDLE					0
 #define CARD_TRADE_BEGIN				1
@@ -35,8 +35,11 @@ typedef struct {
 	uint16 decimal;		  //10^小数位数
 	uint16 status;			//当前状态
 	
+	uint8 setEnable;   //请求设置的 是能状态
+	uint8 enabled;		//当前实时的是能状态
+	
 	uint8 tradeStatus;	//当前交易状态
-	uint32 cost;
+	uint32 recvAmount;
 }MDB_CARD;
 
 
@@ -57,7 +60,7 @@ extern MDB_CARD stCard;
 
 
 uint8 cardTaskPoll(void);
-
+uint8 card_enable(uint8 en);
 #endif
 
 
