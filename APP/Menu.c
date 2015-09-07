@@ -412,7 +412,9 @@ uint8 MN_userMenu(void)
 				case 9://hopper3出币数
 					//MN_dispData(stLog.hpChanged[2]);
 					break;
-				
+				case 10: //读卡器收币
+					MN_dispAmount(stLog.cardRecv);
+					break;
 //================================================================
 
 //==============设备管理20 -39========================================
