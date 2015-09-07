@@ -33,9 +33,12 @@ typedef struct _timer_st_{
 	unsigned short led_paoma;
 	unsigned short pcoin_opt;
 	unsigned short coin_opt;
+	unsigned short card_reset;
 }TIMER_ST;
 extern TIMER_ST Timer;
 
+
+#define TIMER_SET(t,ms)  do{(t) = (ms) / 10;}while(0)
 
 
 void InitTimer(unsigned char TimerNumb,unsigned int TimerInterval);

@@ -13,6 +13,16 @@
 #define CARD_DISABLE					0x0080UL	//禁能
 
 
+#define CARD_TRADE_IDLE					0
+#define CARD_TRADE_BEGIN				1
+#define CARD_TRADE_REQ					2
+#define CARD_TRADE_SUC					3
+#define CARD_TRADE_FAIL					4
+#define CARD_TRADE_END					5
+
+
+
+
 
 typedef struct {
 	//读卡器相关参数
@@ -24,6 +34,9 @@ typedef struct {
 	uint16 code;		  //国家代码
 	uint16 decimal;		  //10^小数位数
 	uint16 status;			//当前状态
+	
+	uint8 tradeStatus;	//当前交易状态
+	uint32 cost;
 }MDB_CARD;
 
 

@@ -436,6 +436,17 @@ void task_dev(void *pdata)
 	LED_ctrl(1,0);
 	LED_ctrl(2,0);
 	LED_ctrl(3,0);
+	
+	/*调试接口手段------------------------------------------*/
+	
+	MDB_setCardType(CARD_MDB);
+	stMdb.bill_type = 0;
+	stMdb.coin_type = 0;
+	memset((void *)&stCard,0,sizeof(stCard));
+	stCard.status = CARD_MALFUNCTION_ERROR;
+	TIMER_SET(Timer.card_reset,10000);
+	/*------------------------End-----------------------------*/
+	
 	MT_devInit();
 	//msleep(500);
 	DEV_msg_rpt(DEV_INIT);
@@ -454,6 +465,7 @@ void task_dev(void *pdata)
 		if(temp == COIN_DISPENSER_HOPPER){
 			HP_task();
 		}	
+		
 		
 		if(MDB_getCardType() == CARD_MDB){
 			cardTaskPoll();
