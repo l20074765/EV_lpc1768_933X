@@ -34,6 +34,8 @@ typedef struct _timer_st_{
 	unsigned short pcoin_opt;
 	unsigned short coin_opt;
 	unsigned short card_reset;
+	unsigned short card_reqeusted;
+	unsigned short card_enable;
 }TIMER_ST;
 extern TIMER_ST Timer;
 

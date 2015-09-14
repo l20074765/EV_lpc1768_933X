@@ -438,6 +438,7 @@ void MT_devInit(void)
 		}
 	}
 	
+	//stMdb.bill_type = 0;//正式版需要注释
 	if(MDB_getCardType() == CARD_MDB){
 		memset((void *)&stCard,0,sizeof(stCard));
 		stCard.status = CARD_MALFUNCTION_ERROR;
@@ -482,7 +483,6 @@ void task_dev(void *pdata)
 		if(temp == COIN_DISPENSER_HOPPER){
 			HP_task();
 		}	
-		
 		
 		if(MDB_getCardType() == CARD_MDB){
 			cardTaskPoll();
