@@ -496,7 +496,7 @@ uint8 cardTaskPoll(void)
 		res = card_vend_success();
 		if(res == 1){ //扣款成功
 			stCard.tradeStatus = CARD_TRADE_SUC;
-			stCard.recvAmount = stMdb.card_cost * 1000; //比例1000倍 正式版需要修改
+			stCard.recvAmount = stMdb.card_cost; //比例1000倍 正式版需要修改
 			print_card("cost suc........!\r\n\r\n");
 		}
 		msleep(150);
