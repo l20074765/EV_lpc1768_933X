@@ -69,7 +69,7 @@ typedef struct _st_dev_coin_{
 	uint8  scale;			 	
 	uint8  codel;			 	
 	uint8  decimal;		 		
-	uint16  rato;	
+	uint32  rato;	
 
 	COIN_STATE state;	
 	COIN_TUBE tube;

@@ -72,6 +72,7 @@ static uint8 bill_setup(BILL_SETUP *setup)
 	setup->scale = INTEG16(recvbuf[3],recvbuf[4]);
 	setup->decimal = recvbuf[5];
 	
+	
 	setup->rato = setup->scale * 100;//以分为单位
 	for(i = 0;i < setup->decimal;i++){
 		setup->rato /= 10;
@@ -84,10 +85,14 @@ static uint8 bill_setup(BILL_SETUP *setup)
 		if(recvbuf[11+i] == 0xFF) 
 			setup->ch[i] = 0;
 		else
-			setup->ch[i] = (uint32)recvbuf[11+i] * setup->rato;			
+			setup->ch[i] = (uint32)recvbuf[11+i] * setup->rato;		
+		
+		print_bill("ch[%d]=%d,%d\r\n",i,recvbuf[11+i],setup->ch[i]);
+			
 	}
 	
-	print_bill("bill-setup:level = %d\r\n",setup->level);
+	print_bill("bill-setup:level = %d,scale=%d,decimal=%d,rato=%d\r\n",
+		setup->level,setup->scale,setup->decimal,setup->rato);
 	return 1;
 }
 

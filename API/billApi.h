@@ -57,9 +57,9 @@ typedef struct _bill_setup_{
 	uint8  	escrowFun;		 //暂存功能
 	uint8  	isRecycler;		//是否支持 循环斗
 	uint16 	codel;		  	 //国家代码
-	uint16 	scale;			 //比例因子
+	uint32 	scale;			 //比例因子
 	uint16 	decimal;		     //10^小数位数
-	uint16 	rato;
+	uint32 	rato;
 	uint16 	stkCapacity;	    //储币容量
 	uint16 	security;		//安全等级
 	uint32  ch[16]; 		//通道面值
