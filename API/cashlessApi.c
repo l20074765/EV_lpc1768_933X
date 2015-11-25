@@ -459,14 +459,14 @@ uint8 cardTaskPoll(void)
 		print_card("CARD_BEGIN_SESSION: remainAmount=%d\r\n",poll.recvAmount);
 		card_reqeusted = 1;
 		TIMER_SET(Timer.card_reqeusted,180000);
-		if(stMdb.card_cost == 0 && stCard.recvAmount == 0){ //没有扣款 且没有正在处理的请求 停止交易
+		if(stCard.cost == 0 && stCard.recvAmount == 0){ //没有扣款 且没有正在处理的请求 停止交易
 			msleep(150);
 			card_vend_complete();
 		}
 		else{
-			print_card("Start vend request:cost = %d\r\n",stMdb.card_cost);
+			print_card("Start vend request:cost = %d\r\n",stCard.cost);
 			msleep(150);
-			res = card_vend_request(stMdb.card_cost / stCard.scale);
+			res = card_vend_request(stCard.cost / stCard.scale);
 			if(res == 1){
 				stCard.tradeStatus = CARD_TRADE_REQ;
 				print_card("card_vend_request:suc_________\r\n");
@@ -496,7 +496,7 @@ uint8 cardTaskPoll(void)
 		res = card_vend_success();
 		if(res == 1){ //扣款成功
 			stCard.tradeStatus = CARD_TRADE_SUC;
-			stCard.recvAmount = stMdb.card_cost; //比例1000倍 正式版需要修改
+			stCard.recvAmount = stCard.cost; //比例1000倍 正式版需要修改
 			print_card("cost suc........!\r\n\r\n");
 		}
 		msleep(150);

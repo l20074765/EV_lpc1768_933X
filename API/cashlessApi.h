@@ -40,6 +40,7 @@ typedef struct {
 	
 	uint8 tradeStatus;	//当前交易状态
 	uint32 recvAmount;
+	uint32 cost;
 }MDB_CARD;
 
 

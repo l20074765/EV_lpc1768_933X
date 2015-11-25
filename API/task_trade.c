@@ -28,8 +28,7 @@ static volatile uint8 g_enterMenu = 0;//维护模式标志
 
 volatile static uint8 g_billRatio = 0,g_coinRatio = 0;
 static uint32 g_iou = 0;
-
-
+static uint32 buttonAmount = 0;
 
 /*********************************************************************************************************
 ** Function name:       SystemInit
@@ -78,7 +77,7 @@ void SystemParaInit(void)
 	memset((void *)&stMdb,0,sizeof(stMdb));
 	FM_readFromFlash();
 	FM_readLogFromFlash();
-	MDB_setBillAcceptor(BILL_ACCEPTOR_MDB);
+	MDB_setBillAcceptor(BILL_ACCEPTOR_NONE);
 	MDB_setBillDispenser(BILL_DISPENSER_MDB);
 	//MDB_setCoinAcceptor(COIN_ACCEPTOR_PPLUSE);
 	MDB_setCoinDispenser(COIN_DISPENSER_HOPPER);
@@ -343,6 +342,42 @@ static void MT_ledPaomaDisplay(uint8 init)
 }
 
 
+void MT_DelayNus(unsigned long n)
+{
+	unsigned long i,j;
+	for(i=0;i<n;i++)
+	{
+		for(j=0;j<25;j++)
+		{
+			__nop();
+		}	
+	}
+}
+
+uint8 MT_getButton(void)
+{
+	static uint8 flag  = 0;
+	if(flag == 0){
+		flag = 1;
+		FIO4DIR &= ~(0x01 << 29);
+	}
+	
+	if(!FIO4PIN & (0x01 << 29)){
+		MT_DelayNus(5000);
+		if(!FIO4PIN & (0x01 << 29)){
+			return 1;
+		}
+	}
+	return 0;
+}
+
+void MT_buttonPoll(void)
+{
+	if(MT_getButton() == 1){
+		stCard.cost += stMdb.card_cost;
+		LED_showAmount(stCard.cost);
+	}
+}
 
 /*********************************************************************************************************
 ** Function name:       trade_task_changer
@@ -367,7 +402,9 @@ void task_trade(void)
 			case TRADE_BEGIN://起始流程
 				remainAmount = 0;
 				curBillAmount = 0;
-				curCoinAmount = 0;		
+				curCoinAmount = 0;	
+				buttonAmount = 0;
+				stCard.cost = 0;
 				Timer.usr_opt = 1000; //10s
 				MT_ledPaomaDisplay(1);
 				DEV_enableReq(OBJ_ALL,1);
@@ -412,6 +449,8 @@ void task_trade(void)
 					else{
 						LED_showAmount(0);
 					}
+					//轮训按键
+					MT_buttonPoll();
 					
 					if(MT_checkDev() > 0){	//检测设备状态
 						state = TRADE_FAULT;

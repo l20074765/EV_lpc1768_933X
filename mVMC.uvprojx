@@ -47,7 +47,7 @@
             <InvalidFlash>1</InvalidFlash>
           </TargetStatus>
           <OutputDirectory>.\Hex\</OutputDirectory>
-          <OutputName>EV_lpc1768_933X_V1.6.hex</OutputName>
+          <OutputName>EV_lpc1768_933X_V1.7.hex</OutputName>
           <CreateExecutable>1</CreateExecutable>
           <CreateLib>0</CreateLib>
           <CreateHexFile>1</CreateHexFile>
