@@ -21,14 +21,14 @@
 #define TRADE_BILLIN					(0x05)				//检测是否有纸币或硬币进入
 #define TRADE_FAULT						(0x17)				//故障
 
-#define VERSION		"EU1.6"
+#define VERSION		"EU1.7"
 
 
 static volatile uint8 g_enterMenu = 0;//维护模式标志
 
 volatile static uint8 g_billRatio = 0,g_coinRatio = 0;
 static uint32 g_iou = 0;
-static uint32 buttonAmount = 0;
+
 
 /*********************************************************************************************************
 ** Function name:       SystemInit
@@ -77,10 +77,12 @@ void SystemParaInit(void)
 	memset((void *)&stMdb,0,sizeof(stMdb));
 	FM_readFromFlash();
 	FM_readLogFromFlash();
-	MDB_setBillAcceptor(BILL_ACCEPTOR_NONE);
-	MDB_setBillDispenser(BILL_DISPENSER_MDB);
+	//MDB_setBillAcceptor(BILL_ACCEPTOR_NONE);
+	//MDB_setBillDispenser(BILL_DISPENSER_MDB);
 	//MDB_setCoinAcceptor(COIN_ACCEPTOR_PPLUSE);
 	MDB_setCoinDispenser(COIN_DISPENSER_HOPPER);
+	
+	stCard.cost = stMdb.card_cost; //刷新读卡器扣款金额
 	
 	
 }
@@ -357,15 +359,26 @@ void MT_DelayNus(unsigned long n)
 uint8 MT_getButton(void)
 {
 	static uint8 flag  = 0;
+	static uint8 pressed = 0;
 	if(flag == 0){
 		flag = 1;
 		FIO4DIR &= ~(0x01 << 29);
 	}
 	
-	if(!FIO4PIN & (0x01 << 29)){
+	if(!(FIO4PIN & (0x01 << 29))){
 		MT_DelayNus(5000);
-		if(!FIO4PIN & (0x01 << 29)){
-			return 1;
+		if(!(FIO4PIN & (0x01 << 29))){
+			pressed = 1;
+			return 0;
+		}
+	}
+	else{
+		if(pressed == 1){
+			MT_DelayNus(5000);
+			if(FIO4PIN & (0x01 << 29)){
+				pressed = 0;
+				return 1;
+			}
 		}
 	}
 	return 0;
@@ -374,9 +387,23 @@ uint8 MT_getButton(void)
 void MT_buttonPoll(void)
 {
 	if(MT_getButton() == 1){
-		stCard.cost += stMdb.card_cost;
+		if(Timer.card_cost == 0){
+			stCard.cost = (stCard.cost >= stMdb.card_maxCost) ? stMdb.card_maxCost : stMdb.card_cost;
+		}
+		else{
+			stCard.cost = (stCard.cost >= stMdb.card_maxCost) ? stMdb.card_cost : stCard.cost + stMdb.card_cost;
+		}
 		LED_showAmount(stCard.cost);
+		Timer.card_cost = 1000;
 	}
+	else{
+		if(Timer.card_cost == 0 && stMdb.card_maxCost > 0 && stCard.cost > 0){ //超时取消扣款
+			stCard.cost = 0;
+			LED_showAmount(stCard.cost);
+		}
+	}
+	
+	
 }
 
 /*********************************************************************************************************
@@ -402,9 +429,10 @@ void task_trade(void)
 			case TRADE_BEGIN://起始流程
 				remainAmount = 0;
 				curBillAmount = 0;
-				curCoinAmount = 0;	
-				buttonAmount = 0;
-				stCard.cost = 0;
+				curCoinAmount = 0;
+				if(stMdb.card_maxCost > 0){ //支持按钮设置刷卡金额
+					stCard.cost = 0;
+				}
 				Timer.usr_opt = 1000; //10s
 				MT_ledPaomaDisplay(1);
 				DEV_enableReq(OBJ_ALL,1);
@@ -416,7 +444,6 @@ void task_trade(void)
 				break;
 			case TRADE_BILLIN:
 				curBillAmount = MDB_getBillRecvAmount();//接收纸币
-			
 				pcoinAmount = MDB_getCoinRecvAmount();//接收硬币
 				if(pcoinAmount != curCoinAmount){
 					curCoinAmount = pcoinAmount;
@@ -425,7 +452,6 @@ void task_trade(void)
 				}
 				
 				curCardAmount = stCard.recvAmount;
-				
 				remainAmount = curBillAmount + curCoinAmount + curCardAmount;//总接收金额
 				if(remainAmount > 0){ // 有金额进入找零环节
 					LED_showAmount(remainAmount);//显示金额
@@ -443,19 +469,22 @@ void task_trade(void)
 				}
 				else{ //空闲状态 
 					MT_checkMenu(state); //检测按键
-					if(Timer.usr_opt == 0){
-						MT_ledPaomaDisplay(0);
-					}
-					else{
-						LED_showAmount(0);
+					if(Timer.card_cost == 0){
+						if(Timer.usr_opt == 0){
+							MT_ledPaomaDisplay(0);
+						}
+						else{
+							LED_showAmount(0);
+						}
+						if(MT_checkDev() > 0){	//检测设备状态
+							state = TRADE_FAULT;
+							DEV_enableReq(OBJ_ALL,0);
+						}
 					}
 					//轮训按键
 					MT_buttonPoll();
 					
-					if(MT_checkDev() > 0){	//检测设备状态
-						state = TRADE_FAULT;
-						DEV_enableReq(OBJ_ALL,0);
-					}
+					
 				}
 				
 				break;

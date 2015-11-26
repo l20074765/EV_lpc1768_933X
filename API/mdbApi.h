@@ -38,6 +38,7 @@ typedef struct _st_mdb_{
 	uint8 card_type;
 	uint8 pointValue; 
 	uint32 card_cost;
+	uint32 card_maxCost;
 	//uint8 is
 	ST_CHANGE_RATO billRato[8];
 	ST_CHANGE_RATO coinRato[8];

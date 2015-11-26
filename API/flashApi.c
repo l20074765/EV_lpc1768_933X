@@ -88,6 +88,9 @@ unsigned char FM_readFromFlash(void)
 	stMdb.card_type = buf[index++];
 	stMdb.card_cost = INTEG32(buf[index + 0],buf[index + 1],buf[index + 2],buf[index + 3]);
 	index += 4;
+	
+	stMdb.card_maxCost = INTEG32(buf[index + 0],buf[index + 1],buf[index + 2],buf[index + 3]);
+	index += 4;
 	Trace("ReadFlash:size=%d\r\n",index);
 	return 1;
 }
@@ -146,6 +149,13 @@ unsigned char FM_writeToFlash(void)
 	buf[index++] = H1UINT32(stMdb.card_cost);
 	buf[index++] = L0UINT32(stMdb.card_cost);
 	buf[index++] = L1UINT32(stMdb.card_cost);
+	
+	
+	
+	buf[index++] = H0UINT32(stMdb.card_maxCost);
+	buf[index++] = H1UINT32(stMdb.card_maxCost);
+	buf[index++] = L0UINT32(stMdb.card_maxCost);
+	buf[index++] = L1UINT32(stMdb.card_maxCost);
 	
 
 	saveFlash(0x00,buf,index);
