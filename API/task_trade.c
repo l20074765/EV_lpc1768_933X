@@ -384,6 +384,13 @@ uint8 MT_getButton(void)
 	return 0;
 }
 
+void MT_cardCostReset(void)
+{
+	if(stMdb.card_maxCost > 0 && stCard.cost > 0){ //超时取消扣款
+		stCard.cost = 0;
+	}
+}
+
 void MT_buttonPoll(void)
 {
 	if(MT_getButton() == 1){
@@ -394,11 +401,11 @@ void MT_buttonPoll(void)
 			stCard.cost = (stCard.cost >= stMdb.card_maxCost) ? stMdb.card_cost : stCard.cost + stMdb.card_cost;
 		}
 		LED_showAmount(stCard.cost);
-		Timer.card_cost = 1000;
+		Timer.card_cost = 12000;
 	}
 	else{
-		if(Timer.card_cost == 0 && stMdb.card_maxCost > 0 && stCard.cost > 0){ //超时取消扣款
-			stCard.cost = 0;
+		if(Timer.card_cost == 0){ //超时取消扣款
+			MT_cardCostReset();
 			LED_showAmount(stCard.cost);
 		}
 	}
@@ -430,9 +437,7 @@ void task_trade(void)
 				remainAmount = 0;
 				curBillAmount = 0;
 				curCoinAmount = 0;
-				if(stMdb.card_maxCost > 0){ //支持按钮设置刷卡金额
-					stCard.cost = 0;
-				}
+				MT_cardCostReset();
 				Timer.usr_opt = 1000; //10s
 				MT_ledPaomaDisplay(1);
 				DEV_enableReq(OBJ_ALL,1);
@@ -454,6 +459,7 @@ void task_trade(void)
 				curCardAmount = stCard.recvAmount;
 				remainAmount = curBillAmount + curCoinAmount + curCardAmount;//总接收金额
 				if(remainAmount > 0){ // 有金额进入找零环节
+					MT_cardCostReset(); //取消读卡器按钮
 					LED_showAmount(remainAmount);//显示金额
 					print_main("remainAmount1=%d\r\n",remainAmount);
 					

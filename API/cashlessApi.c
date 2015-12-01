@@ -520,9 +520,10 @@ uint8 cardTaskPoll(void)
 	else if(poll.s & CARD_CMD_ERR){
 		stCard.status |= CARD_MALFUNCTION_ERROR;
 	}
-	
+#if 0	
 	print_card("Timer.card_reqeusted = %d,card_reqeusted = %d,Timer.card_enable = %d,stCard.enabled = %d,stCard.setEnable = %d\r\n"
 		,Timer.card_reqeusted,card_reqeusted,Timer.card_enable,stCard.enabled,stCard.setEnable);
+#endif
 	if(Timer.card_reqeusted == 0){card_reqeusted = 0;}
 	if(card_reqeusted == 0 ){
 		if(stCard.setEnable != stCard.enabled){
