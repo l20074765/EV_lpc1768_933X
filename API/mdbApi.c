@@ -516,7 +516,8 @@ uint32 MDB_valueFromCents(uint32 value)
 		case 1:v = value / 10; 	break;
 		case 2:v = value;		break;
 		case 3:v = value * 10; break;
-		case 10:v = value / 1000000;break;
+		case 8:v = value / 100000;break;
+		case 9:v = value / 1000000;break;
 		default:v = value;		break;
 	}
 	return v;
@@ -540,7 +541,8 @@ uint32 MDB_valueToCents(uint32 value)
 		case 1:v = value * 10; 	break;
 		case 2:v = value;		break;
 		case 3:v = value / 10; break;
-		case 10:v = value * 1000000;break;
+		case 8:v = value * 100000;break;
+		case 9:v = value * 1000000;break;
 		default:v = value;		break;
 	}
 	return v;

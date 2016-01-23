@@ -1296,7 +1296,7 @@ uint8 MN_setPointValue(uint8 *p)
 		}
 		key = MN_getKey();
 		switch(key){
-			case '0':case '1': case '2': case '3':
+			case '0':case '1': case '2': case '3':case '4':case '5':case '6':case '7':case '8':case '9':
 				if(isEdit){
 					point = key - '0';
 					topFlush = 1;
@@ -1408,8 +1408,6 @@ uint8 MN_adminMenu(void)
 				case 3: //配置hopper通道面值
 					LED_showString("A03.0");
 					isChanged += MN_setChannel(3);
-					//hopper 有改动 扫描 兑币比例
-					//MN_scanRatio();
 					if(isChanged > 0){
 						print_menu("MENU:hopper changed...\r\n");
 						HP_init();
